@@ -276,6 +276,47 @@ export function entnahmedauerJahre(kapital, entnahmeProMonat, jahresRendite) {
   return n / 12;
 }
 
+// Was kostet eine Stundenreduzierung um X % an monatlicher Pension? Betroffen sind nur
+// die noch offenen Erwerbsmonate (Gutschrift-Stichtag bis Ausstieg) – bereits erworbene
+// Kontogutschrift, Weiterversicherung und Nachkauf bleiben unberührt.
+//
+// Wichtig: Liegt das Gehalt über der Höchstbeitragsgrundlage, wirkt eine Reduktion gar
+// nicht oder nur teilweise, weil die Gutschrift ohnehin bei der HBGl gedeckelt ist.
+export function stundenreduzierungEffekt({
+  reduktionProzent, gehalt, konto, arbeitsmonate, lueckenmonate, wvAn, nkMonate,
+  antrittsalter, vm, regelalter, bruttoMonat, nettoMonatVoll, ok,
+}) {
+  if (!ok || !reduktionProzent) return null;
+  const gehaltReduziert = gehalt * (1 - reduktionProzent / 100);
+  const gutschriftReduziert = gutschriftBeiAntritt({
+    konto, gehalt: gehaltReduziert, arbeitsmonate, lueckenmonate, wvAn, nkMonate,
+  });
+  const anspruchReduziert = anspruchUndBrutto({
+    antrittsalter, vm, gutschrift: gutschriftReduziert, regelalter,
+  });
+  if (!anspruchReduziert.ok) return null;
+  const bruttoReduziert = anspruchReduziert.bruttoMonat;
+  const nettoReduziert = nettoMonat(bruttoReduziert);
+  // Beitragswirksames Jahreseinkommen vor/nach Reduktion (auf HBGl gedeckelt)
+  const wirksamVoll = Math.min(gehalt * 14, CONST.HBGL_JAHR);
+  const wirksamReduziert = Math.min(gehaltReduziert * 14, CONST.HBGL_JAHR);
+  return {
+    reduktionProzent,
+    gehaltReduziert,
+    bruttoReduziert,
+    nettoReduziert,
+    verlustBrutto: bruttoMonat - bruttoReduziert,
+    verlustNetto: nettoMonatVoll - nettoReduziert,
+    // Bruttoeinkommen, das pro Jahr wegfällt (ungedeckelt – das spürt man im Geldbeutel)
+    einkommensverlustProJahr: gehalt * 14 - gehaltReduziert * 14,
+    // Anteil der Reduktion, der sich überhaupt auf die Pension auswirkt
+    hbglGedeckelt: wirksamVoll < gehalt * 14,
+    wirksameReduktionProzent: wirksamVoll > 0
+      ? ((wirksamVoll - wirksamReduziert) / wirksamVoll) * 100
+      : 0,
+  };
+}
+
 // Faustregel-Amortisation für den Kauf von genau 1 Nachkauf-Monat (unabhängig von der
 // tatsächlich gewählten Anzahl). Durchgehend in Netto-Größen gerechnet: Kostenseite nach
 // Steuerersparnis, Pensionsseite nach KV und Lohnsteuer – nur so sind die beiden Seiten
@@ -369,6 +410,21 @@ export function berechnePensionsszenario(eingaben) {
     minimum: wvAmortisation(CONST.WV_BG_MIN, wvArgs),
     aktuell: wvAmortisation(Math.min(eingaben.gehalt, CONST.WV_BG_MAX), wvArgs),
   };
+  const stundenreduzierung = stundenreduzierungEffekt({
+    reduktionProzent: eingaben.reduktionProzent,
+    gehalt: eingaben.gehalt,
+    konto: eingaben.konto,
+    arbeitsmonate: monate.arbeitsmonate,
+    lueckenmonate: monate.lueckenmonate,
+    wvAn: eingaben.wvAn,
+    nkMonate: monate.nkMonate,
+    antrittsalter,
+    vm: monate.vm,
+    regelalter,
+    bruttoMonat: anspruch.bruttoMonat,
+    nettoMonatVoll: netto,
+    ok: anspruch.ok,
+  });
 
   return {
     eingaben: { ...eingaben, antrittsalter },
@@ -386,6 +442,7 @@ export function berechnePensionsszenario(eingaben) {
     kapital,
     amortisation,
     wvVergleich,
+    stundenreduzierung,
     ampel: ampelFuer(anspruch, monate, antrittsalter, regelalter),
   };
 }

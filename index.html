@@ -114,6 +114,13 @@
             <button type="button" class="info-icon" data-info="wvAn" aria-label="Info: Nur Pensionsversicherung">i</button>
           </span>
         </label>
+
+        <label class="field slider-field">
+          <span>Stundenreduzierung: <output id="reduktionProzentOut"></output>
+            <button type="button" class="info-icon" data-info="reduktionProzent" aria-label="Info: Wirkung auf die Pension">i</button>
+          </span>
+          <input type="range" id="reduktionProzent" min="0" max="60" step="5">
+        </label>
       </fieldset>
 
       <fieldset class="grid" id="szenarioBFieldset" hidden>
@@ -155,6 +162,13 @@
           <span>Freiwillige Weiterversicherung PV in der Lücke
             <button type="button" class="info-icon" data-info="wvAn" aria-label="Info: Nur Pensionsversicherung">i</button>
           </span>
+        </label>
+
+        <label class="field slider-field">
+          <span>Stundenreduzierung: <output id="reduktionProzentBOut"></output>
+            <button type="button" class="info-icon" data-info="reduktionProzent" aria-label="Info: Wirkung auf die Pension">i</button>
+          </span>
+          <input type="range" id="reduktionProzentB" min="0" max="60" step="5">
         </label>
       </fieldset>
     </div>
@@ -234,6 +248,19 @@
         </div>
         <p class="hint">Nachkaufkosten sind im Kapitalbedarf <strong>nicht</strong> enthalten – sie sollten idealerweise vor dem Ausstieg aus laufendem Einkommen finanziert werden.</p>
       </div>
+
+      <div class="sub-box" id="reduktionBoxA">
+        <h3>Stundenreduzierung: Was kostet sie an Pension?</h3>
+        <dl class="kv-list">
+          <div><dt>Reduziertes Bruttogehalt/Monat</dt><dd id="redGehaltA">–</dd></div>
+          <div><dt>Einkommensverlust pro Jahr</dt><dd id="redEinkommenA" class="negative">–</dd></div>
+          <div><dt>Pension brutto/Monat danach</dt><dd id="redBruttoA">–</dd></div>
+          <div><dt>Pension netto/Monat danach</dt><dd id="redNettoA">–</dd></div>
+          <div><dt>Verlust Pension brutto/Monat</dt><dd id="redVerlustBruttoA">–</dd></div>
+          <div><dt>Verlust Pension netto/Monat</dt><dd id="redVerlustNettoA">–</dd></div>
+        </dl>
+        <p class="hint" id="redHinweisA"></p>
+      </div>
     </section>
 
     <section class="box ergebnis-kachel" id="ergebnisBoxB" hidden>
@@ -308,6 +335,19 @@
           </table>
         </div>
         <p class="hint">Nachkaufkosten sind im Kapitalbedarf <strong>nicht</strong> enthalten – sie sollten idealerweise vor dem Ausstieg aus laufendem Einkommen finanziert werden.</p>
+      </div>
+
+      <div class="sub-box" id="reduktionBoxB">
+        <h3>Stundenreduzierung: Was kostet sie an Pension?</h3>
+        <dl class="kv-list">
+          <div><dt>Reduziertes Bruttogehalt/Monat</dt><dd id="redGehaltB">–</dd></div>
+          <div><dt>Einkommensverlust pro Jahr</dt><dd id="redEinkommenB" class="negative">–</dd></div>
+          <div><dt>Pension brutto/Monat danach</dt><dd id="redBruttoB">–</dd></div>
+          <div><dt>Pension netto/Monat danach</dt><dd id="redNettoB">–</dd></div>
+          <div><dt>Verlust Pension brutto/Monat</dt><dd id="redVerlustBruttoB">–</dd></div>
+          <div><dt>Verlust Pension netto/Monat</dt><dd id="redVerlustNettoB">–</dd></div>
+        </dl>
+        <p class="hint" id="redHinweisB"></p>
       </div>
     </section>
   </div>

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   CONST, tarif, monateZwischen, stichtagPension, ausstiegsdatum,
   berechnePensionsszenario, addMonths, breakEvenPunkt, regelpensionsalter,
-  amortisationEinMonat, wvAmortisation, entnahmedauerJahre,
+  amortisationEinMonat, wvAmortisation, entnahmedauerJahre, stundenreduzierungEffekt,
 } from './pension.js';
 
 // Referenzperson: geb. 24.02.1983, Konto 22.812 € per 01.01.2026, 203 VM per Stichtag,
@@ -415,6 +415,53 @@ test('Ampel: Nachkauf ab Regelpensionsalter macht nicht "gelb" (er ist dort nich
     ...basis, ausstiegsalter: 63, antrittsalter: 63, nachkaufMonate: 59,
   });
   assert.equal(korridor.ampel, 'gelb');
+});
+
+test('stundenreduzierungEffekt: null bei 0 % und ohne Anspruch', () => {
+  const r = berechnePensionsszenario({
+    ...basis, ausstiegsalter: 65, antrittsalter: 65, reduktionProzent: 0,
+  });
+  assert.equal(r.stundenreduzierung, null);
+  assert.equal(stundenreduzierungEffekt({ ok: false, reduktionProzent: 20 }), null);
+});
+
+test('stundenreduzierungEffekt: unter der HBGl wirkt die Reduktion voll', () => {
+  const r = berechnePensionsszenario({
+    ...basis, gehalt: 4000, ausstiegsalter: 65, antrittsalter: 65, reduktionProzent: 20,
+  });
+  const s = r.stundenreduzierung;
+  assert.ok(Math.abs(s.gehaltReduziert - 3200) < 1e-9);
+  assert.ok(Math.abs(s.wirksameReduktionProzent - 20) < 1e-9);
+  assert.equal(s.hbglGedeckelt, false);
+  assert.ok(s.verlustBrutto > 0, 'Pension muss sinken');
+  assert.ok(Math.abs(s.bruttoReduziert + s.verlustBrutto - r.bruttoMonat) < 1e-9);
+  // Einkommensverlust ist ungedeckelt: 20 % von 14 Gehältern
+  assert.ok(Math.abs(s.einkommensverlustProJahr - 4000 * 14 * 0.2) < 1e-9);
+});
+
+test('stundenreduzierungEffekt: über der HBGl kostet eine kleine Reduktion keine Pension', () => {
+  // Gehalt 9.000 liegt über der HBGl (6.930); 20 % Reduktion -> 7.200, noch darüber
+  const r = berechnePensionsszenario({
+    ...basis, gehalt: 9000, ausstiegsalter: 65, antrittsalter: 65, reduktionProzent: 20,
+  });
+  const s = r.stundenreduzierung;
+  assert.equal(s.hbglGedeckelt, true);
+  assert.ok(Math.abs(s.wirksameReduktionProzent) < 1e-9, 'keine beitragswirksame Reduktion');
+  assert.ok(Math.abs(s.verlustBrutto) < 1e-9, 'Pension bleibt gleich');
+  assert.ok(Math.abs(s.verlustNetto) < 1e-9);
+  // Einkommen verliert man trotzdem
+  assert.ok(s.einkommensverlustProJahr > 0);
+});
+
+test('stundenreduzierungEffekt: große Reduktion unter die HBGl wirkt nur anteilig', () => {
+  const r = berechnePensionsszenario({
+    ...basis, gehalt: 9000, ausstiegsalter: 65, antrittsalter: 65, reduktionProzent: 50,
+  });
+  const s = r.stundenreduzierung;
+  assert.ok(s.verlustBrutto > 0, 'unter der HBGl greift die Reduktion');
+  // Nur der Teil unterhalb der HBGl ist beitragswirksam -> deutlich weniger als 50 %
+  assert.ok(s.wirksameReduktionProzent > 0 && s.wirksameReduktionProzent < 50,
+    `wirksam=${s.wirksameReduktionProzent}`);
 });
 
 test('berechnePensionsszenario liefert amortisation + wvVergleich', () => {

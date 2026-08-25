@@ -19,6 +19,7 @@ const DEFAULTS = {
   nachkaufMonate: 0,
   nachkaufJahre: 5,
   wvAn: true,
+  reduktionProzent: 20,
   vergleichAn: false,
   nachkaufAlsEtf: false,
   lebenshaltungB: 2000,
@@ -27,6 +28,7 @@ const DEFAULTS = {
   nachkaufMonateB: 0,
   nachkaufJahreB: 5,
   wvAnB: true,
+  reduktionProzentB: 20,
 };
 
 const PFLICHTFELDER = ['geburtsdatum', 'geschlecht', 'kontoStichtag', 'konto', 'vmStart', 'gehalt'];
@@ -47,6 +49,7 @@ const PARAM_KEYS = {
   nachkaufMonate: 'nk',
   nachkaufJahre: 'nj',
   wvAn: 'wv',
+  reduktionProzent: 'red',
   vergleichAn: 'vgl',
   nachkaufAlsEtf: 'nketf',
   lebenshaltungB: 'lhB',
@@ -55,6 +58,7 @@ const PARAM_KEYS = {
   nachkaufMonateB: 'nkB',
   nachkaufJahreB: 'njB',
   wvAnB: 'wvB',
+  reduktionProzentB: 'redB',
 };
 
 const BOOL_KEYS = new Set(['wvAn', 'vergleichAn', 'wvAnB', 'nachkaufAlsEtf']);
@@ -125,6 +129,7 @@ const els = {
   nachkaufMonate: document.getElementById('nachkaufMonate'),
   nachkaufJahre: document.getElementById('nachkaufJahre'),
   wvAn: document.getElementById('wvAn'),
+  reduktionProzent: document.getElementById('reduktionProzent'),
   vergleichAn: document.getElementById('vergleichAn'),
   nachkaufAlsEtf: document.getElementById('nachkaufAlsEtf'),
   lebenshaltungB: document.getElementById('lebenshaltungB'),
@@ -133,6 +138,7 @@ const els = {
   nachkaufMonateB: document.getElementById('nachkaufMonateB'),
   nachkaufJahreB: document.getElementById('nachkaufJahreB'),
   wvAnB: document.getElementById('wvAnB'),
+  reduktionProzentB: document.getElementById('reduktionProzentB'),
 };
 
 const outs = {
@@ -141,11 +147,13 @@ const outs = {
   antrittsalter: document.getElementById('antrittsalterOut'),
   nachkaufMonate: document.getElementById('nachkaufMonateOut'),
   nachkaufJahre: document.getElementById('nachkaufJahreOut'),
+  reduktionProzent: document.getElementById('reduktionProzentOut'),
   lebenshaltungB: document.getElementById('lebenshaltungBOut'),
   ausstiegsalterB: document.getElementById('ausstiegsalterBOut'),
   antrittsalterB: document.getElementById('antrittsalterBOut'),
   nachkaufMonateB: document.getElementById('nachkaufMonateBOut'),
   nachkaufJahreB: document.getElementById('nachkaufJahreBOut'),
+  reduktionProzentB: document.getElementById('reduktionProzentBOut'),
 };
 
 let eingaben = ladeEingaben();
@@ -166,6 +174,7 @@ function eingabenInFormular() {
   els.nachkaufMonate.value = eingaben.nachkaufMonate;
   els.nachkaufJahre.value = eingaben.nachkaufJahre;
   els.wvAn.checked = eingaben.wvAn;
+  els.reduktionProzent.value = eingaben.reduktionProzent;
   els.vergleichAn.checked = eingaben.vergleichAn;
   els.nachkaufAlsEtf.checked = eingaben.nachkaufAlsEtf;
   els.lebenshaltungB.value = eingaben.lebenshaltungB;
@@ -176,6 +185,7 @@ function eingabenInFormular() {
   els.nachkaufMonateB.value = eingaben.nachkaufMonateB;
   els.nachkaufJahreB.value = eingaben.nachkaufJahreB;
   els.wvAnB.checked = eingaben.wvAnB;
+  els.reduktionProzentB.value = eingaben.reduktionProzentB;
   aktualisiereOutputs();
 }
 
@@ -187,11 +197,13 @@ function aktualisiereOutputs() {
   outs.antrittsalter.textContent = eingaben.antrittsalter;
   outs.nachkaufMonate.textContent = numFmt.format(eingaben.nachkaufMonate);
   outs.nachkaufJahre.textContent = eingaben.nachkaufJahre;
+  outs.reduktionProzent.textContent = `${eingaben.reduktionProzent} %`;
   outs.lebenshaltungB.textContent = eurFmt.format(eingaben.lebenshaltungB);
   outs.ausstiegsalterB.textContent = eingaben.ausstiegsalterB;
   outs.antrittsalterB.textContent = eingaben.antrittsalterB;
   outs.nachkaufMonateB.textContent = numFmt.format(eingaben.nachkaufMonateB);
   outs.nachkaufJahreB.textContent = eingaben.nachkaufJahreB;
+  outs.reduktionProzentB.textContent = `${eingaben.reduktionProzentB} %`;
   document.getElementById('nachkaufJahreField').classList.toggle('disabled', eingaben.nachkaufMonate <= 0);
   document.getElementById('nachkaufJahreBField').classList.toggle('disabled', eingaben.nachkaufMonateB <= 0);
   document.getElementById('szenarioBFieldset').hidden = !eingaben.vergleichAn;
@@ -217,6 +229,7 @@ function ausFormularLesen() {
     nachkaufMonate: Number(els.nachkaufMonate.value),
     nachkaufJahre: Number(els.nachkaufJahre.value),
     wvAn: els.wvAn.checked,
+    reduktionProzent: Number(els.reduktionProzent.value),
     vergleichAn: els.vergleichAn.checked,
     nachkaufAlsEtf: els.nachkaufAlsEtf.checked,
     lebenshaltungB: Number(els.lebenshaltungB.value),
@@ -225,6 +238,7 @@ function ausFormularLesen() {
     nachkaufMonateB: Number(els.nachkaufMonateB.value),
     nachkaufJahreB: Number(els.nachkaufJahreB.value),
     wvAnB: els.wvAnB.checked,
+    reduktionProzentB: Number(els.reduktionProzentB.value),
   };
 }
 
@@ -265,6 +279,7 @@ function neuBerechnenUndRendern() {
       nachkaufMonate: eingaben.nachkaufMonateB,
       nachkaufJahre: eingaben.nachkaufJahreB,
       wvAn: eingaben.wvAnB,
+      reduktionProzent: eingaben.reduktionProzentB,
     };
     const ergebnisB = berechnePensionsszenario(eingabenB);
     rendereScenario('B', ergebnisB, eingabenB.lebenshaltung);
@@ -290,6 +305,7 @@ function rendereLeerZustand() {
     zelle(`cardKapital${suffix}`, '–');
     document.getElementById(`nachkaufBox${suffix}`).hidden = true;
     document.getElementById(`amortisationBox${suffix}`).hidden = true;
+    document.getElementById(`reduktionBox${suffix}`).hidden = true;
     ['dVm', 'dNk', 'dGutschrift', 'dRegelalter', 'dAbschlagZuschlag', 'dSvJahr', 'dKapitalPuffer'].forEach((praefix) => {
       zelle(`${praefix}${suffix}`, '–');
     });
@@ -395,12 +411,53 @@ function rendereAmortisation(suffix, ergebnis) {
   zelle(`wvAmMin${suffix}`, wv.minimum ? jahreText(wv.minimum.jahreEinfach) : '–');
 }
 
+function rendereReduktion(suffix, ergebnis) {
+  const box = document.getElementById(`reduktionBox${suffix}`);
+  const r = ergebnis.stundenreduzierung;
+  const hinweis = document.getElementById(`redHinweis${suffix}`);
+  if (!r) {
+    // Slider auf 0 % (oder kein Anspruch): Block bleibt stehen, aber ohne Zahlen
+    box.hidden = false;
+    ['redGehalt', 'redEinkommen', 'redBrutto', 'redNetto', 'redVerlustBrutto', 'redVerlustNetto']
+      .forEach((p) => zelle(`${p}${suffix}`, '–'));
+    hinweis.textContent = ergebnis.ok
+      ? 'Regler „Stundenreduzierung" auf über 0 % stellen, um den Effekt zu sehen.'
+      : '';
+    return;
+  }
+  box.hidden = false;
+  zelle(`redGehalt${suffix}`, eurFmt.format(r.gehaltReduziert));
+  zelle(`redEinkommen${suffix}`, `− ${eurFmt.format(r.einkommensverlustProJahr)}`);
+  zelle(`redBrutto${suffix}`, eurFmt.format(r.bruttoReduziert));
+  zelle(`redNetto${suffix}`, eurFmt.format(r.nettoReduziert));
+  zelle(`redVerlustBrutto${suffix}`, r.verlustBrutto > 0.005 ? `− ${eurFmt2.format(r.verlustBrutto)}` : '± 0 €');
+  zelle(`redVerlustNetto${suffix}`, r.verlustNetto > 0.005 ? `− ${eurFmt2.format(r.verlustNetto)}` : '± 0 €');
+
+  const verlustZellen = [`redVerlustBrutto${suffix}`, `redVerlustNetto${suffix}`];
+  verlustZellen.forEach((id) => {
+    const el = document.getElementById(id);
+    el.classList.remove('negative', 'positive');
+    el.classList.add(r.verlustNetto > 0.005 ? 'negative' : 'positive');
+  });
+
+  // Kernaussage: über der Höchstbeitragsgrundlage wirkt eine Reduktion gar nicht oder
+  // nur teilweise, weil die Gutschrift ohnehin gedeckelt ist.
+  if (r.wirksameReduktionProzent < 0.05) {
+    hinweis.textContent = `Die Pension bleibt unverändert: dein Gehalt liegt auch nach der Reduktion über der Höchstbeitragsgrundlage (${eurFmt2.format(CONST.HBGL_MONAT)}/Monat), die Gutschrift war also ohnehin gedeckelt. Du verlierst Einkommen, aber keine Pension.`;
+  } else if (r.hbglGedeckelt && r.wirksameReduktionProzent < r.reduktionProzent - 0.05) {
+    hinweis.textContent = `Von den ${r.reduktionProzent} % Reduktion wirken sich nur ${pctFmt.format(r.wirksameReduktionProzent / 100)} auf die Pension aus – der Teil oberhalb der Höchstbeitragsgrundlage (${eurFmt2.format(CONST.HBGL_MONAT)}/Monat) war nie beitragswirksam.`;
+  } else {
+    hinweis.textContent = `Betroffen sind nur die Erwerbsmonate ab dem Gutschrift-Stichtag bis zum Ausstieg – bereits erworbene Gutschrift, Nachkauf und Weiterversicherung bleiben unberührt.`;
+  }
+}
+
 function rendereScenario(suffix, ergebnis, lebenshaltung) {
   rendereStatus(suffix, ergebnis);
   rendereKarten(suffix, ergebnis, lebenshaltung);
   rendereNachkauf(suffix, ergebnis);
   rendereAmortisation(suffix, ergebnis);
   rendereDetails(suffix, ergebnis);
+  rendereReduktion(suffix, ergebnis);
 }
 
 function rendereChart(eingabenAktuell) {
@@ -655,6 +712,19 @@ const INFO_TEXTE = {
     <br><br>
     Nicht enthalten: dass die Pension lebenslang läuft, ein angespartes Kapital aber endlich ist – der
     Nachkauf ist damit auch eine Absicherung gegen ein langes Leben.`,
+  reduktionProzent: `Was kostet eine Reduktion der Arbeitszeit an <strong>monatlicher Pension</strong>?
+    Gerechnet wird mit entsprechend geringerem Bruttogehalt für die noch offenen Erwerbsmonate
+    (Gutschrift-Stichtag bis Ausstieg). Bereits erworbene Kontogutschrift, Nachkauf und
+    Weiterversicherung bleiben unberührt.
+    <br><br>
+    <strong>Wichtig bei hohem Gehalt:</strong> Die Pensionsgutschrift ist bei der
+    Höchstbeitragsgrundlage gedeckelt (${eurFmt2.format(CONST.HBGL_MONAT)}/Monat bzw.
+    ${eurFmt.format(CONST.HBGL_JAHR)}/Jahr inkl. Sonderzahlungen). Liegt dein Gehalt darüber, wirkt sich
+    eine Reduktion gar nicht oder nur zum Teil auf die Pension aus – du verlierst dann Einkommen, ohne
+    Pension zu verlieren. Der Hinweis unter der Tabelle weist das jeweils aus.
+    <br><br>
+    Nicht berücksichtigt: dass ein geringeres Gehalt auch die Steuerersparnis beim Nachkauf senkt, und
+    etwaige kollektivvertragliche Effekte einer Teilzeitvereinbarung.`,
   wvAmortisation: `Zahlt es sich aus, in der Lücke freiwillig weiter in die Pensionsversicherung einzuzahlen?
     Gerechnet wird <strong>ein Jahr Beitrag</strong> gegen die zusätzliche Nettopension, die dieses Jahr bringt.
     <br><br>
