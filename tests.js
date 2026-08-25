@@ -509,6 +509,17 @@ test('gfAn: Kapitalbedarf wird nie negativ', () => {
   assert.ok(r.kapital.kapital >= 0, `kapital=${r.kapital.kapital}`);
 });
 
+test('gfAn: Nettoeinkommen nutzt den reduzierten SV-Satz (AlV-Einschleifregelung)', () => {
+  const r = berechnePensionsszenario({
+    ...basis, ausstiegsalter: 60, antrittsalter: 63, nachkaufMonate: 0, wvAn: false, gfAn: true,
+  });
+  // 15,12 % statt 18,07 %: der Arbeitslosenbeitrag entfällt bis 2.225 EUR/Monat
+  assert.ok(Math.abs(CONST.GF_SV_DN_SATZ - 0.1512) < 1e-9);
+  assert.ok(CONST.GF_SV_DN_SATZ < CONST.SV_DN_SATZ);
+  const erwartet = CONST.GF_PLUS_BG * 14 * (1 - CONST.GF_SV_DN_SATZ);
+  assert.ok(Math.abs(r.kapital.nettoEinkommenJahr - erwartet) < 1e-9);
+});
+
 test('berechnePensionsszenario liefert amortisation + wvVergleich', () => {
   const r = berechnePensionsszenario({
     ...basis, ausstiegsalter: 65, antrittsalter: 65,

@@ -65,6 +65,12 @@ CONST.NK_GUTSCHRIFT_MONAT = (CONST.NK_KOSTEN_MONAT / CONST.WV_SATZ) * CONST.KONT
 // bekommen -- der Nutzen entsteht erst mit dem einen Euro darueber (Vollversicherung).
 CONST.GF_PLUS_BG = CONST.GERINGFUEGIGKEIT + 1;
 
+// Dienstnehmeranteil auf diesem Einkommensniveau: KV 3,87 + PV 10,25 + AK-Umlage 0,5 +
+// Wohnbaufoerderung 0,5 = 15,12 %. Der Arbeitslosenbeitrag entfaellt: die
+// Einschleifregelung (Paragraf 2a AMPFG) setzt ihn bis 2.225 EUR/Monat auf 0 % -- deshalb
+// NICHT der allgemeine Satz SV_DN_SATZ (18,07 %), der erst ab 2.630 EUR gilt.
+CONST.GF_SV_DN_SATZ = 0.0387 + 0.1025 + 0.005 + 0.005;
+
 export function clamp(x, lo, hi) {
   return Math.min(Math.max(x, lo), hi);
 }
@@ -263,7 +269,7 @@ export function kapitalbedarf({ lueckenmonate, lebenshaltung, wvAn, gfAn = false
   // Das Erwerbseinkommen in der Luecke mindert den Kapitalbedarf. Lohnsteuer faellt bei
   // diesem Niveau keine an (weit unter dem Steuerfreibetrag), nur SV-Dienstnehmeranteil.
   const nettoEinkommenJahr = gfAn
-    ? CONST.GF_PLUS_BG * 14 * (1 - CONST.SV_DN_SATZ)
+    ? CONST.GF_PLUS_BG * 14 * (1 - CONST.GF_SV_DN_SATZ)
     : 0;
   const bedarfProJahr = Math.max(0, lebenshaltung * 12 + svJahr - nettoEinkommenJahr);
   const kapital = (lueckenmonate / 12) * bedarfProJahr;

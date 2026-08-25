@@ -774,7 +774,12 @@ const INFO_TEXTE = {
     ${eurFmt2.format(CONST.GF_PLUS_BG * 0.1025)} Dienstnehmeranteil pro Monat statt
     ${eurFmt.format(CONST.NK_KOSTEN_MONAT)}.
     <br>• Die KV-Selbstversicherung (${eurFmt.format(CONST.KV_SELBST_MONAT * 12)}/Jahr) entfällt.
-    <br>• Das Einkommen mindert den Kapitalbedarf; Lohnsteuer fällt auf diesem Niveau keine an.
+    <br>• Das Einkommen mindert den Kapitalbedarf: netto rund
+    ${eurFmt2.format(CONST.GF_PLUS_BG * 14 * (1 - CONST.GF_SV_DN_SATZ) / 12)} pro Monat, also
+    ${eurFmt.format(CONST.GF_PLUS_BG * 14 * (1 - CONST.GF_SV_DN_SATZ))} im Jahr. Lohnsteuer fällt auf diesem
+    Niveau keine an (weit unter dem Steuerfreibetrag), und der Dienstnehmeranteil beträgt nur
+    ${(CONST.GF_SV_DN_SATZ * 100).toFixed(2)} % statt der üblichen ${(CONST.SV_DN_SATZ * 100).toFixed(2)} % –
+    der Arbeitslosenbeitrag entfällt bis 2.225 €/Monat (Einschleifregelung).
     <br><br>
     Die Gutschrift bleibt naturgemäß klein (${eurFmt2.format(CONST.KONTOPROZENTSATZ * CONST.GF_PLUS_BG * 14)}/Jahr) –
     es geht um Monate und Versicherungsschutz, nicht um Pensionshöhe.
