@@ -67,7 +67,19 @@
       </label>
 
       <label class="field">
-        <span>Bruttogehalt/Monat, ×14 (€)</span>
+        <span>Versicherung
+          <button type="button" class="info-icon" data-info="versicherungsart" aria-label="Info: ASVG oder GSVG?">i</button>
+        </span>
+        <select id="versicherungsart" required>
+          <option value="asvg">Angestellt / Arbeiter (ASVG)</option>
+          <option value="gsvg">Selbständig (GSVG / SVS)</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span id="gehaltLabel">Bruttogehalt/Monat, ×14 (€)
+          <button type="button" class="info-icon" data-info="gehalt" aria-label="Info: Welcher Betrag?">i</button>
+        </span>
         <input type="number" id="gehalt" min="0" step="10" required>
       </label>
 

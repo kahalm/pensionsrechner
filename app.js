@@ -12,6 +12,7 @@ const DEFAULTS = {
   kontoStichtag: '',
   vmStart: '',
   gehalt: '',
+  versicherungsart: 'asvg',
   nkMaxMonate: CONST.NK_MAX_MONATE,
   lebenshaltung: 2000,
   ausstiegsalter: 60,
@@ -33,7 +34,7 @@ const DEFAULTS = {
   reduktionProzentB: 20,
 };
 
-const PFLICHTFELDER = ['geburtsdatum', 'geschlecht', 'kontoStichtag', 'konto', 'vmStart', 'gehalt'];
+const PFLICHTFELDER = ['geburtsdatum', 'geschlecht', 'kontoStichtag', 'konto', 'vmStart', 'gehalt', 'versicherungsart'];
 const NUMMER_FELDER = new Set(['konto', 'vmStart', 'gehalt']);
 
 // Kurze Query-Param-Schlüssel für teilbare Links.
@@ -44,6 +45,7 @@ const PARAM_KEYS = {
   kontoStichtag: 'ks',
   vmStart: 'vm',
   gehalt: 'g',
+  versicherungsart: 'va',
   nkMaxMonate: 'nkmax',
   lebenshaltung: 'lh',
   ausstiegsalter: 'aa',
@@ -126,6 +128,7 @@ const els = {
   kontoStichtag: document.getElementById('kontoStichtag'),
   vmStart: document.getElementById('vmStart'),
   gehalt: document.getElementById('gehalt'),
+  versicherungsart: document.getElementById('versicherungsart'),
   nkMaxMonate: document.getElementById('nkMaxMonate'),
   lebenshaltung: document.getElementById('lebenshaltung'),
   ausstiegsalter: document.getElementById('ausstiegsalter'),
@@ -173,6 +176,7 @@ function eingabenInFormular() {
   els.kontoStichtag.value = eingaben.kontoStichtag;
   els.vmStart.value = eingaben.vmStart;
   els.gehalt.value = eingaben.gehalt;
+  els.versicherungsart.value = eingaben.versicherungsart;
   els.nkMaxMonate.value = eingaben.nkMaxMonate;
   els.lebenshaltung.value = eingaben.lebenshaltung;
   els.ausstiegsalter.value = eingaben.ausstiegsalter;
@@ -199,7 +203,20 @@ function eingabenInFormular() {
   aktualisiereOutputs();
 }
 
+// Das Eingabefeld bedeutet je nach System etwas anderes: im ASVG das Monatsbrutto
+// (x14), im GSVG die Jahreseinkuenfte laut Bescheid. Beschriftung und Schrittweite
+// werden deshalb mitgeschaltet, sonst tippt man Aepfel und rechnet Birnen.
+function aktualisiereVersicherungsart(art) {
+  const label = document.getElementById('gehaltLabel');
+  const istGsvg = art === 'gsvg';
+  label.childNodes[0].nodeValue = istGsvg
+    ? 'Einkünfte/Jahr laut Bescheid (€) '
+    : 'Bruttogehalt/Monat, ×14 (€) ';
+  els.gehalt.step = istGsvg ? 100 : 10;
+}
+
 function aktualisiereOutputs() {
+  aktualisiereVersicherungsart(eingaben.versicherungsart);
   els.nachkaufMonate.max = eingaben.nkMaxMonate;
   els.nachkaufMonateB.max = eingaben.nkMaxMonate;
   outs.lebenshaltung.textContent = eurFmt.format(eingaben.lebenshaltung);
@@ -262,6 +279,7 @@ function ausFormularLesen() {
     kontoStichtag: els.kontoStichtag.value,
     vmStart: leseZahlfeld(els.vmStart),
     gehalt: leseZahlfeld(els.gehalt),
+    versicherungsart: els.versicherungsart.value,
     nkMaxMonate: Number(els.nkMaxMonate.value),
     lebenshaltung: Number(els.lebenshaltung.value),
     ausstiegsalter: Number(els.ausstiegsalter.value),
@@ -703,6 +721,40 @@ const INFO_TEXTE = {
     (abhängig vom Geburtsdatum) – das wirkt sich auf Abschlag/Zuschlag und die Korridorpension aus.
     Genaues Regelpensionsalter im Zweifel bei der PV erfragen.
     <a href="https://www.pensionsversicherung.at" target="_blank" rel="noopener">Zur Pensionsversicherung →</a>`,
+  versicherungsart: `Bestimmt, wie aus deinem Einkommen die Beitragsgrundlage wird. Die Pension selbst
+    berechnet sich in beiden Fällen gleich (APG-Pensionskonto, ${(CONST.KONTOPROZENTSATZ * 100).toFixed(2)} %
+    Kontoprozentsatz), auch Korridorpension, Abschläge und Nachkauf gelten unverändert.
+    <br><br>
+    <strong>ASVG (angestellt):</strong> Monatsbrutto × 14, gedeckelt bei
+    ${eurFmt.format(CONST.HBGL_MONAT)}/Monat. Beitragssatz 22,8 %, davon trägst du 10,25 % – den Rest der
+    Dienstgeber.
+    <br><br>
+    <strong>GSVG (selbständig, SVS):</strong> Grundlage sind die <em>Jahreseinkünfte laut
+    Einkommensteuerbescheid</em>, gedeckelt bei ${eurFmt.format(CONST.GSVG_HBGL_MONAT)}/Monat (×12 – keine
+    Sonderzahlungen, dieselbe Jahressumme wie im ASVG). Beitragssatz
+    ${(CONST.GSVG_PV * 100).toFixed(1)} %, den du zur Gänze selbst trägst. Es gilt eine
+    Mindestbeitragsgrundlage von ${eurFmt2.format(CONST.GSVG_MIND_BG_MONAT)}/Monat.
+    <br><br>
+    <strong>Bemerkenswert:</strong> Weil der GSVG-Satz niedriger ist, entsteht pro eingezahltem Euro
+    <em>mehr</em> Gutschrift als im ASVG – ${((CONST.KONTOPROZENTSATZ / CONST.GSVG_PV) * 100).toFixed(2)} %
+    statt ${((CONST.KONTOPROZENTSATZ / 0.228) * 100).toFixed(2)} %. Für Selbständige ist der laufende
+    Pflichtbeitrag damit rund 23 % effizienter als ein Nachkauf. Angestellte stehen trotzdem besser da,
+    weil dort der Dienstgeber 55 % der Beiträge übernimmt.`,
+  gehalt: `<strong>Angestellt (ASVG):</strong> das monatliche Bruttogehalt. Der Rechner multipliziert
+    intern mit 14 (Sonderzahlungen) und deckelt bei der Höchstbeitragsgrundlage.
+    <br><br>
+    <strong>Selbständig (GSVG):</strong> die <em>Einkünfte pro Jahr</em> aus Gewerbebetrieb oder
+    selbständiger Arbeit laut Einkommensteuerbescheid – nicht der Umsatz und nicht ein Monatswert.
+    <br><br>
+    Dabei greift eine Eigenheit des GSVG: Zur Beitragsgrundlage werden die im Beitragsjahr
+    <strong>vorgeschriebenen PV- und KV-Beiträge wieder hinzugerechnet</strong>. Da diese Beiträge selbst
+    von der Grundlage abhängen, löst der Rechner das als Fixpunkt auf:
+    Grundlage = Einkünfte ÷ (1 − ${((CONST.GSVG_PV + CONST.GSVG_KV) * 100).toFixed(1)} %). Aus
+    50.000 € Einkünften werden so rund 66.900 € Beitragsgrundlage – wer nur die Einkünfte ansetzt,
+    unterschätzt seine Pension deutlich.
+    <br><br>
+    <strong>Nicht abgebildet:</strong> die Nachbemessung. Die SVS schreibt zunächst vorläufige Beiträge vor
+    und korrigiert sie später anhand des Bescheids; der Rechner nimmt den eingegebenen Wert als endgültig.`,
   gutschrift: `Auf <strong>neuespensionskonto.at/pensionskonto</strong> mit ID Austria einloggen: Gutschrift und
     Stichtag stehen auf der Übersicht.
     <a href="https://www.neuespensionskonto.at/pensionskonto/" target="_blank" rel="noopener">Zum Pensionskonto →</a>`,

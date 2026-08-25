@@ -5,6 +5,7 @@ import {
   berechnePensionsszenario, addMonths, breakEvenPunkt, regelpensionsalter,
   amortisationEinMonat, wvAmortisation, entnahmedauerJahre, stundenreduzierungEffekt,
   svSatzDienstnehmer, istVollversichert, nettoErwerbseinkommenJahr,
+  jahresBeitragsgrundlage, steuerBemessung,
 } from './pension.js';
 
 // Referenzperson: geb. 24.02.1983, Konto 22.812 € per 01.01.2026, 203 VM per Stichtag,
@@ -569,6 +570,53 @@ test('Zuverdienst: höheres Einkommen bringt mehr Gutschrift, gedeckelt bei der 
   const hoch = berechnePensionsszenario({ ...b, gfEinkommen: CONST.HBGL_MONAT });
   const nochHoeher = berechnePensionsszenario({ ...b, gfEinkommen: CONST.HBGL_MONAT * 2 });
   assert.ok(Math.abs(hoch.gutschrift - nochHoeher.gutschrift) < 1e-6);
+});
+
+test('jahresBeitragsgrundlage ASVG: Monatsbrutto x 14, gedeckelt bei der HBGl', () => {
+  assert.equal(jahresBeitragsgrundlage(5000, 'asvg'), 70000);
+  assert.equal(jahresBeitragsgrundlage(9000, 'asvg'), CONST.HBGL_JAHR, 'über HBGl gedeckelt');
+  assert.equal(jahresBeitragsgrundlage(0, 'asvg'), 0);
+  // Default ist ASVG
+  assert.equal(jahresBeitragsgrundlage(5000), 70000);
+});
+
+test('jahresBeitragsgrundlage GSVG: Hinzurechnung der Beiträge als Fixpunkt', () => {
+  // BG = Einkünfte / (1 - (PV + KV)) = 50.000 / 0,747
+  const erwartet = 50000 / (1 - (CONST.GSVG_PV + CONST.GSVG_KV));
+  assert.ok(Math.abs(jahresBeitragsgrundlage(50000, 'gsvg') - erwartet) < 1e-6);
+  // Die Grundlage liegt immer ÜBER den Einkünften, nie darunter
+  assert.ok(jahresBeitragsgrundlage(50000, 'gsvg') > 50000);
+});
+
+test('jahresBeitragsgrundlage GSVG: Mindest- und Höchstbeitragsgrundlage greifen', () => {
+  assert.equal(jahresBeitragsgrundlage(1000, 'gsvg'), CONST.GSVG_MIND_BG_MONAT * 12);
+  assert.equal(jahresBeitragsgrundlage(200000, 'gsvg'), CONST.HBGL_JAHR);
+});
+
+test('Beide Systeme führen bei gleicher Beitragsgrundlage zur gleichen Pension', () => {
+  const b = {
+    ...basis, ausstiegsalter: 65, antrittsalter: 65, nachkaufMonate: 0, wvAn: false, gfEinkommen: 0,
+  };
+  // 5.000/Monat x 14 = 70.000; im GSVG dieselbe BG bei Einkünften von 70.000 x 0,747
+  const einkuenfte = 70000 * (1 - (CONST.GSVG_PV + CONST.GSVG_KV));
+  const a = berechnePensionsszenario({ ...b, gehalt: 5000, versicherungsart: 'asvg' });
+  const g = berechnePensionsszenario({ ...b, gehalt: einkuenfte, versicherungsart: 'gsvg' });
+  assert.ok(Math.abs(a.gutschrift - g.gutschrift) < 1e-6);
+  assert.ok(Math.abs(a.bruttoMonat - g.bruttoMonat) < 1e-6);
+});
+
+test('steuerBemessung: ASVG zieht den DN-Anteil ab, GSVG nimmt die Einkünfte direkt', () => {
+  const asvg = steuerBemessung(5000, 'asvg');
+  assert.ok(Math.abs(asvg - (12 * 5000 - 12 * 5000 * CONST.SV_DN_SATZ)) < 1e-9);
+  // Im GSVG sind die SVS-Beiträge bereits Betriebsausgaben
+  assert.equal(steuerBemessung(50000, 'gsvg'), 50000);
+});
+
+test('GSVG: pro Euro Beitrag entsteht mehr Gutschrift als im ASVG', () => {
+  const proEuroGsvg = CONST.KONTOPROZENTSATZ / CONST.GSVG_PV;
+  const proEuroAsvg = CONST.KONTOPROZENTSATZ / 0.228;
+  assert.ok(proEuroGsvg > proEuroAsvg);
+  assert.ok(Math.abs(proEuroGsvg - 0.09622) < 1e-4, `${proEuroGsvg}`);
 });
 
 test('berechnePensionsszenario liefert amortisation + wvVergleich', () => {

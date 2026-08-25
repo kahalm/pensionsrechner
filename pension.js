@@ -43,6 +43,15 @@ export const CONST = {
     [Infinity, 0.55],
   ],
   SV_DN_SATZ: 0.1807,
+
+  // GSVG (Selbstaendige, SVS) -- Werte 2026, verifiziert an wko.at.
+  // Der Kontoprozentsatz ist derselbe wie im ASVG, nur der Beitragssatz ist
+  // niedriger: 18,5 % statt 22,8 %. Pro eingezahltem Euro entsteht dadurch MEHR
+  // Gutschrift (9,62 % statt 7,81 %) -- dafuer traegt man alles allein.
+  GSVG_PV: 0.185,
+  GSVG_KV: 0.068,
+  GSVG_HBGL_MONAT: 8085,          // x12 = 97.020 wie im ASVG (dort x14)
+  GSVG_MIND_BG_MONAT: 551.10,     // Mindestbeitragsgrundlage, PV-Beitrag 101,95/Monat
   SZ_FREIBETRAG: 620,
   SZ_STEUERSATZ: 0.06,
   // Freigrenze fuer sonstige Bezuege (Paragraf 67 EStG), Wert 2026: bleibt das
@@ -116,8 +125,37 @@ export function ausstiegsdatum(geburtsdatum, alter) {
   return new Date(g.getFullYear() + alter, g.getMonth() + 1, 0);
 }
 
-export function jahresgutschrift(gehalt) {
-  return CONST.KONTOPROZENTSATZ * Math.min(gehalt * 14, CONST.HBGL_JAHR);
+// Jahresbeitragsgrundlage aus der Nutzereingabe. Die beiden Systeme unterscheiden
+// sich darin, WIE man dorthin kommt:
+//
+//   ASVG: Monatsbrutto x 14 (Sonderzahlungen), gedeckelt bei HBGL_JAHR.
+//   GSVG: Einkuenfte laut Einkommensteuerbescheid PLUS Hinzurechnung der im
+//         Beitragsjahr vorgeschriebenen PV- und KV-Beitraege. Weil diese Beitraege
+//         selbst von der Grundlage abhaengen, ist das ein Fixpunkt:
+//           BG = E + (PV+KV) x BG   ->   BG = E / (1 - (PV+KV))
+//         Zusaetzlich gelten Mindest- und Hoechstbeitragsgrundlage.
+//
+// betrag ist im ASVG das MONATSbrutto, im GSVG die JAHRESeinkuenfte.
+export function jahresBeitragsgrundlage(betrag, versicherungsart = 'asvg') {
+  if (!(betrag > 0)) return 0;
+  if (versicherungsart === 'gsvg') {
+    const roh = betrag / (1 - (CONST.GSVG_PV + CONST.GSVG_KV));
+    return clamp(roh, CONST.GSVG_MIND_BG_MONAT * 12, CONST.HBGL_JAHR);
+  }
+  return Math.min(betrag * 14, CONST.HBGL_JAHR);
+}
+
+export function jahresgutschrift(betrag, versicherungsart = 'asvg') {
+  return CONST.KONTOPROZENTSATZ * jahresBeitragsgrundlage(betrag, versicherungsart);
+}
+
+// Steuerliche Bemessungsgrundlage fuer den Sonderausgabenabzug beim Nachkauf.
+// ASVG: Jahresbrutto minus Dienstnehmeranteil SV. GSVG: die Einkuenfte laut Bescheid
+// sind bereits nach Betriebsausgaben (inkl. SVS-Beitraegen) ermittelt.
+export function steuerBemessung(betrag, versicherungsart = 'asvg') {
+  if (!(betrag > 0)) return 0;
+  if (versicherungsart === 'gsvg') return betrag;
+  return 12 * betrag - 12 * Math.min(betrag, CONST.HBGL_MONAT) * CONST.SV_DN_SATZ;
 }
 
 // Stufenweise Anhebung des Frauen-Regelpensionsalters 2024–2033 (von 60 auf 65,
@@ -205,9 +243,10 @@ export function versicherungsmonate({
 }
 
 export function gutschriftBeiAntritt({
-  konto, gehalt, arbeitsmonate, lueckenmonate, wvAn, gfEinkommen = 0, nkMonate,
+  konto, gehalt, versicherungsart = 'asvg', arbeitsmonate, lueckenmonate, wvAn,
+  gfEinkommen = 0, nkMonate,
 }) {
-  const jg = jahresgutschrift(gehalt);
+  const jg = jahresgutschrift(gehalt, versicherungsart);
   let g = konto + (arbeitsmonate / 12) * jg;
   if (istVollversichert(gfEinkommen)) {
     // Anstellung ueber der Geringfuegigkeitsgrenze: Gutschrift wie bei jedem
@@ -282,7 +321,7 @@ export function nettoMonat(bruttoMonat) {
 }
 
 export function nachkaufSteuereffekt({
-  nkMonate, gehalt, nachkaufJahre, jahreBisAntritt = 0,
+  nkMonate, gehalt, versicherungsart = 'asvg', nachkaufJahre, jahreBisAntritt = 0,
 }) {
   const kostenVoll = nkMonate * CONST.NK_KOSTEN_MONAT;
   if (kostenVoll <= 0) {
@@ -290,7 +329,7 @@ export function nachkaufSteuereffekt({
       kostenVoll: 0, ratePerJahr: 0, ersparnis: 0, kostenNetto: 0, effSatz: 0, etfWert: 0,
     };
   }
-  const bemessung = 12 * gehalt - 12 * Math.min(gehalt, CONST.HBGL_MONAT) * CONST.SV_DN_SATZ;
+  const bemessung = steuerBemessung(gehalt, versicherungsart);
   const rate = kostenVoll / nachkaufJahre;
   const ersparnis = nachkaufJahre * (tarif(bemessung) - tarif(Math.max(0, bemessung - rate)));
   const kostenNetto = kostenVoll - ersparnis;
@@ -339,8 +378,8 @@ function zusatzNetto(bruttoMonat, zusatzBrutto) {
 
 // Steuerersparnis, wenn genau ein Nachkauf-Monat in einem Jahr als Sonderausgabe
 // abgesetzt wird (Grenzsteuersatz beim gegebenen Gehalt).
-function nachkaufErsparnisEinMonat(gehalt) {
-  const bemessung = 12 * gehalt - 12 * Math.min(gehalt, CONST.HBGL_MONAT) * CONST.SV_DN_SATZ;
+function nachkaufErsparnisEinMonat(gehalt, versicherungsart = 'asvg') {
+  const bemessung = steuerBemessung(gehalt, versicherungsart);
   return tarif(bemessung) - tarif(Math.max(0, bemessung - CONST.NK_KOSTEN_MONAT));
 }
 
@@ -366,13 +405,13 @@ export function entnahmedauerJahre(kapital, entnahmeProMonat, jahresRendite) {
 // Wichtig: Liegt das Gehalt über der Höchstbeitragsgrundlage, wirkt eine Reduktion gar
 // nicht oder nur teilweise, weil die Gutschrift ohnehin bei der HBGl gedeckelt ist.
 export function stundenreduzierungEffekt({
-  reduktionProzent, gehalt, konto, arbeitsmonate, lueckenmonate, wvAn, nkMonate,
+  reduktionProzent, gehalt, versicherungsart = 'asvg', konto, arbeitsmonate, lueckenmonate, wvAn, nkMonate,
   antrittsalter, vm, regelalter, bruttoMonat, nettoMonatVoll, ok,
 }) {
   if (!ok || !reduktionProzent) return null;
   const gehaltReduziert = gehalt * (1 - reduktionProzent / 100);
   const gutschriftReduziert = gutschriftBeiAntritt({
-    konto, gehalt: gehaltReduziert, arbeitsmonate, lueckenmonate, wvAn, nkMonate,
+    konto, gehalt: gehaltReduziert, versicherungsart, arbeitsmonate, lueckenmonate, wvAn, nkMonate,
   });
   const anspruchReduziert = anspruchUndBrutto({
     antrittsalter, vm, gutschrift: gutschriftReduziert, regelalter,
@@ -381,8 +420,8 @@ export function stundenreduzierungEffekt({
   const bruttoReduziert = anspruchReduziert.bruttoMonat;
   const nettoReduziert = nettoMonat(bruttoReduziert);
   // Beitragswirksames Jahreseinkommen vor/nach Reduktion (auf HBGl gedeckelt)
-  const wirksamVoll = Math.min(gehalt * 14, CONST.HBGL_JAHR);
-  const wirksamReduziert = Math.min(gehaltReduziert * 14, CONST.HBGL_JAHR);
+  const wirksamVoll = jahresBeitragsgrundlage(gehalt, versicherungsart);
+  const wirksamReduziert = jahresBeitragsgrundlage(gehaltReduziert, versicherungsart);
   return {
     reduktionProzent,
     gehaltReduziert,
@@ -391,9 +430,11 @@ export function stundenreduzierungEffekt({
     verlustBrutto: bruttoMonat - bruttoReduziert,
     verlustNetto: nettoMonatVoll - nettoReduziert,
     // Bruttoeinkommen, das pro Jahr wegfällt (ungedeckelt – das spürt man im Geldbeutel)
-    einkommensverlustProJahr: gehalt * 14 - gehaltReduziert * 14,
+    einkommensverlustProJahr: versicherungsart === 'gsvg'
+      ? gehalt - gehaltReduziert
+      : (gehalt - gehaltReduziert) * 14,
     // Anteil der Reduktion, der sich überhaupt auf die Pension auswirkt
-    hbglGedeckelt: wirksamVoll < gehalt * 14,
+    hbglGedeckelt: wirksamVoll >= CONST.HBGL_JAHR,
     wirksameReduktionProzent: wirksamVoll > 0
       ? ((wirksamVoll - wirksamReduziert) / wirksamVoll) * 100
       : 0,
@@ -405,11 +446,11 @@ export function stundenreduzierungEffekt({
 // Steuerersparnis, Pensionsseite nach KV und Lohnsteuer – nur so sind die beiden Seiten
 // überhaupt vergleichbar.
 export function amortisationEinMonat({
-  abschlag, zuschlag, jahreBisAntritt, ok, gehalt, bruttoMonat,
+  abschlag, zuschlag, jahreBisAntritt, ok, gehalt, versicherungsart = 'asvg', bruttoMonat,
 }) {
   if (!ok) return null;
   const kostenBrutto = CONST.NK_KOSTEN_MONAT;
-  const steuerersparnis = nachkaufErsparnisEinMonat(gehalt);
+  const steuerersparnis = nachkaufErsparnisEinMonat(gehalt, versicherungsart);
   const kostenNetto = kostenBrutto - steuerersparnis;
   const faktor = abschlag > 0 ? (1 - abschlag) : (1 + zuschlag);
   const zusatzBruttoProMonat = (CONST.NK_GUTSCHRIFT_MONAT / 14) * faktor;
@@ -459,6 +500,7 @@ export function berechnePensionsszenario(eingaben) {
   const gutschrift = gutschriftBeiAntritt({
     konto: eingaben.konto,
     gehalt: eingaben.gehalt,
+    versicherungsart: eingaben.versicherungsart,
     arbeitsmonate: monate.arbeitsmonate,
     lueckenmonate: monate.lueckenmonate,
     wvAn: eingaben.wvAn,
@@ -471,7 +513,11 @@ export function berechnePensionsszenario(eingaben) {
   const netto = anspruch.ok ? nettoMonat(anspruch.bruttoMonat) : null;
   const jahreBisAntritt = monateZwischen(eingaben.kontoStichtag, monate.stichtagPension) / 12;
   const nachkauf = nachkaufSteuereffekt({
-    nkMonate: monate.nkMonate, gehalt: eingaben.gehalt, nachkaufJahre: eingaben.nachkaufJahre, jahreBisAntritt,
+    nkMonate: monate.nkMonate,
+    gehalt: eingaben.gehalt,
+    versicherungsart: eingaben.versicherungsart,
+    nachkaufJahre: eingaben.nachkaufJahre,
+    jahreBisAntritt,
   });
   const kapital = kapitalbedarf({
     lueckenmonate: monate.lueckenmonate,
@@ -485,6 +531,7 @@ export function berechnePensionsszenario(eingaben) {
     jahreBisAntritt,
     ok: anspruch.ok,
     gehalt: eingaben.gehalt,
+    versicherungsart: eingaben.versicherungsart,
     bruttoMonat: anspruch.bruttoMonat,
   });
   const wvArgs = {
@@ -493,13 +540,17 @@ export function berechnePensionsszenario(eingaben) {
     ok: anspruch.ok,
     bruttoMonat: anspruch.bruttoMonat,
   };
+  // Die Weiterversicherung rechnet mit einer MONATLICHEN Beitragsgrundlage. Im GSVG
+  // ist die Eingabe aber ein Jahresbetrag -- also erst auf den Monat umlegen.
+  const monatsBGAktuell = jahresBeitragsgrundlage(eingaben.gehalt, eingaben.versicherungsart) / 12;
   const wvVergleich = {
     minimum: wvAmortisation(CONST.WV_BG_MIN, wvArgs),
-    aktuell: wvAmortisation(Math.min(eingaben.gehalt, CONST.WV_BG_MAX), wvArgs),
+    aktuell: wvAmortisation(clamp(monatsBGAktuell, CONST.WV_BG_MIN, CONST.WV_BG_MAX), wvArgs),
   };
   const stundenreduzierung = stundenreduzierungEffekt({
     reduktionProzent: eingaben.reduktionProzent,
     gehalt: eingaben.gehalt,
+    versicherungsart: eingaben.versicherungsart,
     konto: eingaben.konto,
     arbeitsmonate: monate.arbeitsmonate,
     lueckenmonate: monate.lueckenmonate,
