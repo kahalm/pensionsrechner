@@ -344,12 +344,9 @@ function rendereKarten(suffix, ergebnis, lebenshaltung) {
 }
 
 function rendereNachkauf(suffix, ergebnis) {
-  const box = document.getElementById(`nachkaufBox${suffix}`);
-  if (ergebnis.monate.nkMonate <= 0) {
-    box.hidden = true;
-    return;
-  }
-  box.hidden = false;
+  // Block bleibt immer sichtbar – bei 0 gekauften Monaten stehen dort eben Nullwerte,
+  // das ist beim Schieben des Sliders weniger sprunghaft als ein Ein-/Ausblenden.
+  document.getElementById(`nachkaufBox${suffix}`).hidden = false;
   zelle(`nkMonate${suffix}`, numFmt.format(ergebnis.monate.nkMonate));
   zelle(`nkKostenVoll${suffix}`, eurFmt.format(ergebnis.nachkauf.kostenVoll));
   zelle(`nkErsparnis${suffix}`, eurFmt.format(ergebnis.nachkauf.ersparnis));
