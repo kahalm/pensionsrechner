@@ -126,9 +126,10 @@ einzelner Browser 900 in fünf Minuten).
 
 Der Post auf r/austria ging um 20:11 MESZ online. Ein Cron-Loop meldete alle fünf
 Minuten Aufrufe, Besucher, Referrer und Fehler; er lernte unterwegs, nur echte
-Seitenaufrufe zu zählen und laufende von abgeschlossenen Fenstern zu trennen. Spitze:
-54 Aufrufe in fünf Minuten um 20:20; nach drei Stunden rund 950 Seitenaufrufe von knapp
-500 Besuchern, ausschließlich über Reddit (App und Web etwa gleich), null Fehler.
+Seitenaufrufe zu zählen und laufende von abgeschlossenen Fenstern zu trennen. Zwei Wellen:
+51 Aufrufe in fünf Minuten um 20:20 und 53 um 21:15; nach zweieinhalb Stunden rund 930
+Seitenaufrufe von knapp 500 Besuchern, ausschließlich über Reddit (App und Web etwa
+gleich), null Fehler.
 
 ## 9. Selbständige (GSVG)
 

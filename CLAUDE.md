@@ -132,9 +132,12 @@ Referenzszenario und öffnet jedes Info-Popup für beide Versicherungsarten.
 - CI baut bei jedem Push auf `main` das Image `:dev`; ein `v*`-Tag ergibt zusätzlich
   `:latest`. Deploy = `docker compose pull && docker compose up -d` im Stack-Ordner.
 - Die Stack-Compose liegt hier als `opt-stacks-compose.yaml` und wird auf dem Host neben
-  `fluent-bit/` abgelegt. Elasticsearch-Host, Port und Index kommen aus Umgebungsvariablen
-  (`ELASTICSEARCH_HOST`, `ELASTICSEARCH_PORT`, `ELASTICSEARCH_INDEX`); Fluent Bit schreibt
-  nach `${ELASTICSEARCH_INDEX}-web`.
+  `fluent-bit/` abgelegt. Elasticsearch-Host, Port und Index kommen aus einer `.env` im
+  Stack-Ordner (`ELASTICSEARCH_HOST`, `ELASTICSEARCH_PORT`, `ELASTICSEARCH_INDEX`); Fluent
+  Bit schreibt nach `${ELASTICSEARCH_INDEX}-web`. `ELASTICSEARCH_HOST` ist als
+  Pflichtvariable (`${VAR:?…}`) deklariert und hat **absichtlich keinen Default** – interne
+  Adressen gehören nicht ins öffentliche Repo. Ohne `.env` bricht `docker compose` mit
+  einer klaren Meldung ab; `.env` steht in `.gitignore`.
 - **Log-Inhalt**: Pfad, Status, Bytes, Referrer, User-Agent, anonymisierte IP (letztes
   Oktett 0), Flag „hatte Parameter“. **Nicht** im Log: Query-String (enthält die
   Eingaben), rohe `X-Forwarded-For`-Kette. Wer das ändert, ändert den Datenschutztext mit.

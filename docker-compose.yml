@@ -18,7 +18,7 @@ services:
     command: ["/fluent-bit/bin/fluent-bit", "-c", "/fluent-bit/etc/fluent-bit.conf"]
     environment:
       APP_ENV: ${APP_ENV:-dev}
-      ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-10.24.13.6}
+      ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:?ELASTICSEARCH_HOST fehlt - in .env setzen}
       ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
       # Fluent Bit schreibt nach "<wert>-web".
       ELASTICSEARCH_INDEX: ${ELASTICSEARCH_INDEX:-pensionsrechner-dev}

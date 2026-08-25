@@ -1,0 +1,2 @@
+# Lokale Umgebungsvariablen (Elasticsearch-Adresse etc.) – gehören nicht ins Repo
+.env
