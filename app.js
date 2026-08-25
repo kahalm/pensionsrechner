@@ -661,7 +661,23 @@ const INFO_TEXTE = {
     Stichtag stehen auf der Übersicht.
     <a href="https://www.neuespensionskonto.at/pensionskonto/" target="_blank" rel="noopener">Zum Pensionskonto →</a>`,
   versicherungsmonate: `Auf <strong>neuespensionskonto.at/pensionskonto</strong> (ID Austria) unter „Pensionswert" ersichtlich.
-    <a href="https://www.neuespensionskonto.at/pensionskonto/" target="_blank" rel="noopener">Zum Pensionskonto →</a>`,
+    <br><br>
+    <strong>Auslandszeiten dazuzählen:</strong> Im Pensionskonto stehen nur die österreichischen Monate.
+    Versicherungszeiten aus EU-/EWR-Staaten, der Schweiz und Abkommensstaaten werden für die
+    <em>Anspruchsprüfung</em> aber mitgerechnet (Zusammenrechnung) – also für die
+    ${CONST.KORRIDOR_MONATE} Monate der Korridorpension. Trag hier daher die <em>Summe</em> ein, sonst
+    fällt der Anspruch zu pessimistisch aus.
+    <br><br>
+    Die <em>Pensionshöhe</em> ist davon unberührt: Sie wird ausschließlich aus der österreichischen
+    Kontogutschrift oben berechnet, ausländische Zeiten erhöhen sie nicht. Für diese zahlt jeder Staat
+    eine eigene Teilpension nach eigenen Regeln und ab eigenem Pensionsalter – eine Korridorpension in
+    Österreich löst z. B. die deutsche Rente nicht mit aus. Unter 12 Versicherungsmonaten entsteht gegen
+    den betreffenden Staat in der Regel kein eigener Anspruch.
+    <br><br>
+    Antrag stellst du nur im Wohnsitzstaat (also bei der PV) und gibst die Auslandszeiten dort an – das
+    zwischenstaatliche Verfahren läuft dann von dort.
+    <a href="https://www.neuespensionskonto.at/pensionskonto/" target="_blank" rel="noopener">Zum Pensionskonto →</a><br>
+    <a href="https://www.pv.at/web/pension/ihr-weg-zur-pension/zwischenstaatliche-pensionsversicherung" target="_blank" rel="noopener">Zwischenstaatliche Pensionsversicherung (PV) →</a>`,
   nkMax: `Gesetzliches Maximum: 108 Monate (36 Monate höhere Schule + 72 Monate/12 Semester Hochschule).
     <br><br>
     Der Nachkauf ist an <strong>einzelne Semester</strong> gebunden, nicht an den Studienabschluss – es
