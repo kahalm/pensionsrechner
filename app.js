@@ -76,6 +76,12 @@ const pctFmt = new Intl.NumberFormat('de-AT', { style: 'percent', minimumFractio
 const numFmt = new Intl.NumberFormat('de-AT');
 const dateFmt = new Intl.DateTimeFormat('de-AT');
 
+// Prozentwerte in den Info-Texten: toFixed() liefert einen Punkt als Dezimaltrenner,
+// im deutschen Text braucht es ein Komma. Erwartet den Wert bereits in Prozent.
+const pz = (wert, stellen = 2) => new Intl.NumberFormat('de-AT', {
+  minimumFractionDigits: stellen, maximumFractionDigits: stellen,
+}).format(wert);
+
 function ladeEingaben() {
   const url = new URLSearchParams(window.location.search);
   let stored = {};
@@ -213,6 +219,13 @@ function aktualisiereVersicherungsart(art) {
     ? 'Einkünfte/Jahr laut Bescheid (€) '
     : 'Bruttogehalt/Monat, ×14 (€) ';
   els.gehalt.step = istGsvg ? 100 : 10;
+
+  // Selbstaendige reduzieren keine Stunden, sondern Einkuenfte -- die Rechnung ist
+  // dieselbe (proportional), die Beschriftung muss aber passen.
+  for (const suffix of ['', 'B']) {
+    const el = document.getElementById(`reduktionLabel${suffix}`);
+    el.childNodes[0].nodeValue = istGsvg ? 'Einkünfte reduzieren: ' : 'Stundenreduzierung: ';
+  }
 }
 
 function aktualisiereOutputs() {
@@ -722,7 +735,7 @@ const INFO_TEXTE = {
     Genaues Regelpensionsalter im Zweifel bei der PV erfragen.
     <a href="https://www.pensionsversicherung.at" target="_blank" rel="noopener">Zur Pensionsversicherung →</a>`,
   versicherungsart: `Bestimmt, wie aus deinem Einkommen die Beitragsgrundlage wird. Die Pension selbst
-    berechnet sich in beiden Fällen gleich (APG-Pensionskonto, ${(CONST.KONTOPROZENTSATZ * 100).toFixed(2)} %
+    berechnet sich in beiden Fällen gleich (APG-Pensionskonto, ${pz(CONST.KONTOPROZENTSATZ * 100, 2)} %
     Kontoprozentsatz), auch Korridorpension, Abschläge und Nachkauf gelten unverändert.
     <br><br>
     <strong>ASVG (angestellt):</strong> Monatsbrutto × 14, gedeckelt bei
@@ -732,12 +745,12 @@ const INFO_TEXTE = {
     <strong>GSVG (selbständig, SVS):</strong> Grundlage sind die <em>Jahreseinkünfte laut
     Einkommensteuerbescheid</em>, gedeckelt bei ${eurFmt.format(CONST.GSVG_HBGL_MONAT)}/Monat (×12 – keine
     Sonderzahlungen, dieselbe Jahressumme wie im ASVG). Beitragssatz
-    ${(CONST.GSVG_PV * 100).toFixed(1)} %, den du zur Gänze selbst trägst. Es gilt eine
+    ${pz(CONST.GSVG_PV * 100, 1)} %, den du zur Gänze selbst trägst. Es gilt eine
     Mindestbeitragsgrundlage von ${eurFmt2.format(CONST.GSVG_MIND_BG_MONAT)}/Monat.
     <br><br>
     <strong>Bemerkenswert:</strong> Weil der GSVG-Satz niedriger ist, entsteht pro eingezahltem Euro
-    <em>mehr</em> Gutschrift als im ASVG – ${((CONST.KONTOPROZENTSATZ / CONST.GSVG_PV) * 100).toFixed(2)} %
-    statt ${((CONST.KONTOPROZENTSATZ / 0.228) * 100).toFixed(2)} %. Für Selbständige ist der laufende
+    <em>mehr</em> Gutschrift als im ASVG – ${pz((CONST.KONTOPROZENTSATZ / CONST.GSVG_PV) * 100, 2)} %
+    statt ${pz((CONST.KONTOPROZENTSATZ / 0.228) * 100, 2)} %. Für Selbständige ist der laufende
     Pflichtbeitrag damit rund 23 % effizienter als ein Nachkauf. Angestellte stehen trotzdem besser da,
     weil dort der Dienstgeber 55 % der Beiträge übernimmt.`,
   gehalt: `<strong>Angestellt (ASVG):</strong> das monatliche Bruttogehalt. Der Rechner multipliziert
@@ -749,7 +762,7 @@ const INFO_TEXTE = {
     Dabei greift eine Eigenheit des GSVG: Zur Beitragsgrundlage werden die im Beitragsjahr
     <strong>vorgeschriebenen PV- und KV-Beiträge wieder hinzugerechnet</strong>. Da diese Beiträge selbst
     von der Grundlage abhängen, löst der Rechner das als Fixpunkt auf:
-    Grundlage = Einkünfte ÷ (1 − ${((CONST.GSVG_PV + CONST.GSVG_KV) * 100).toFixed(1)} %). Aus
+    Grundlage = Einkünfte ÷ (1 − ${pz((CONST.GSVG_PV + CONST.GSVG_KV) * 100, 1)} %). Aus
     50.000 € Einkünften werden so rund 66.900 € Beitragsgrundlage – wer nur die Einkünfte ansetzt,
     unterschätzt seine Pension deutlich.
     <br><br>
@@ -789,7 +802,7 @@ const INFO_TEXTE = {
     auf das nötige Minimum für die Korridorpension (falls niedriger). Reicht selbst das Maximum nicht, kommt
     ein Hinweis. Senkst du diesen Wert danach wieder unter das Minimum, bleibt das Antrittsalter unverändert –
     die Statuszeile zeigt dann in Rot, wie viele Monate fehlen.`,
-  nachkaufJahre: `Verteilt die Nachkaufkosten steuerlich auf 1–10 Jahre (nur relevant, wenn oben Monate
+  nachkaufJahre: (art) => `Verteilt die Nachkaufkosten steuerlich auf 1–10 Jahre (nur relevant, wenn oben Monate
     gewählt sind).
     <br><br>
     <strong>Kosten pro Monat:</strong> gerechnet wird mit ${eurFmt.format(CONST.NK_KOSTEN_MONAT)}. Der echte
@@ -801,9 +814,19 @@ const INFO_TEXTE = {
     <br><br>
     Der Höchstwert ist exakt Höchstbeitragsgrundlage × 22,8 %
     (${eurFmt2.format(CONST.HBGL_MONAT)} × 22,8 % = ${eurFmt2.format(CONST.HBGL_MONAT * CONST.WV_SATZ)}) – ein
-    nachgekaufter Monat ist also ein fiktiver Beitragsmonat nahe der Höchstbeitragsgrundlage. Deshalb bringt er
-    viel Gutschrift, deshalb kostet er aber auch so viel: du trägst beide Beitragsanteile selbst, während bei
-    einem Dienstverhältnis der Dienstgeber 12,55 der 22,8 Prozentpunkte zahlt.`,
+    nachgekaufter Monat ist also ein fiktiver Beitragsmonat nahe der Höchstbeitragsgrundlage.`
+    + (art === 'gsvg'
+      ? ` Deshalb bringt er viel Gutschrift, deshalb kostet er aber auch so viel.
+        <br><br>
+        <strong>Für dich als Selbständige:r</strong> ist der Nachkauf vergleichsweise unattraktiv: Er rechnet
+        mit dem ASVG-Satz von 22,8 %, deine laufenden GSVG-Beiträge dagegen mit
+        ${pz(CONST.GSVG_PV * 100, 1)} %. Pro eingezahltem Euro bekommst du dort
+        ${pz((CONST.KONTOPROZENTSATZ / CONST.GSVG_PV) * 100, 2)} % Gutschrift statt
+        ${pz((CONST.KONTOPROZENTSATZ / CONST.WV_SATZ) * 100, 2)} % beim Nachkauf – also rund 23 % mehr,
+        obwohl du in beiden Fällen alles selbst trägst.`
+      : ` Deshalb bringt er viel Gutschrift, deshalb kostet er aber auch so viel: du trägst beide
+        Beitragsanteile selbst, während bei einem Dienstverhältnis der Dienstgeber 12,55 der 22,8
+        Prozentpunkte zahlt.`),
   wvAn: `Betrifft nur die <strong>Pensionsversicherung</strong> (§17 ASVG) – das ist freiwillig: niemand
     zwingt dich, in der Lücke weiter PV-Beiträge zu zahlen. Lässt du es weg, sparst du dir die Beiträge,
     aber die Lückenmonate zählen nicht als Versicherungsmonate und bringen keine zusätzliche Gutschrift.
@@ -816,7 +839,7 @@ const INFO_TEXTE = {
     "Gesamtkosten" und den Break-even ein. Aktiviert, wird stattdessen der <strong>ETF-Wert bei Antritt</strong>
     verwendet (die Nettokosten, angenommen zu 5% p.a. netto verzinst statt an die PV gezahlt) – das macht den
     Vergleich fairer, wenn du die Opportunitätskosten des Nachkaufs (entgangene Anlage) mit einrechnen willst.`,
-  amortisationNachkauf: `Wie lange dauert es, bis sich <strong>ein einzelner nachgekaufter Monat</strong> wieder
+  amortisationNachkauf: (art) => `Wie lange dauert es, bis sich <strong>ein einzelner nachgekaufter Monat</strong> wieder
     hereingespielt hat? Durchgehend in <strong>Netto-Größen</strong> gerechnet, weil nur das vergleichbar ist:
     auf der Kostenseite der Bruttopreis (${eurFmt.format(CONST.NK_KOSTEN_MONAT)}) abzüglich der Steuerersparnis
     aus dem Sonderausgabenabzug, auf der Ertragsseite die zusätzliche Pension nach KV-Beitrag und Lohnsteuer
@@ -861,29 +884,38 @@ const INFO_TEXTE = {
     bewusst in Kauf.
     <br><br>
     Vom Brutto gehen Sozialversicherung und Lohnsteuer ab. Der Dienstnehmersatz steigt gestaffelt von
-    ${(CONST.GF_SV_DN_SATZ * 100).toFixed(2)} % (Arbeitslosenbeitrag 0 % bis 2.225 €) auf
-    ${(CONST.SV_DN_SATZ * 100).toFixed(2)} % ab 2.630 € – Einschleifregelung nach § 2a AMPFG.
+    ${pz(CONST.GF_SV_DN_SATZ * 100, 2)} % (Arbeitslosenbeitrag 0 % bis 2.225 €) auf
+    ${pz(CONST.SV_DN_SATZ * 100, 2)} % ab 2.630 € – Einschleifregelung nach § 2a AMPFG.
     <br><br>
     <strong>Achtung:</strong> Am Stichtag der Korridorpension selbst darf kein Erwerbseinkommen über der
     Geringfügigkeitsgrenze bestehen – das Dienstverhältnis muss bis dahin beendet oder reduziert sein.`,
-  reduktionProzent: `Was kostet eine Reduktion der Arbeitszeit an <strong>monatlicher Pension</strong>?
+  reduktionProzent: (art) => (art === 'gsvg'
+    ? `Was kostet es an <strong>monatlicher Pension</strong>, die Einkünfte zu reduzieren – etwa durch
+    weniger Aufträge oder eine Auszeit? Gerechnet wird mit entsprechend geringeren Jahreseinkünften für
+    die noch offenen Erwerbsmonate (Gutschrift-Stichtag bis Ausstieg). Bereits erworbene Kontogutschrift,
+    Nachkauf und Weiterversicherung bleiben unberührt.`
+    : `Was kostet eine Reduktion der Arbeitszeit an <strong>monatlicher Pension</strong>?
     Gerechnet wird mit entsprechend geringerem Bruttogehalt für die noch offenen Erwerbsmonate
     (Gutschrift-Stichtag bis Ausstieg). Bereits erworbene Kontogutschrift, Nachkauf und
-    Weiterversicherung bleiben unberührt.
+    Weiterversicherung bleiben unberührt.`) + `
     <br><br>
-    <strong>Wichtig bei hohem Gehalt:</strong> Die Pensionsgutschrift ist bei der
-    Höchstbeitragsgrundlage gedeckelt (${eurFmt2.format(CONST.HBGL_MONAT)}/Monat bzw.
-    ${eurFmt.format(CONST.HBGL_JAHR)}/Jahr inkl. Sonderzahlungen). Liegt dein Gehalt darüber, wirkt sich
-    eine Reduktion gar nicht oder nur zum Teil auf die Pension aus – du verlierst dann Einkommen, ohne
-    Pension zu verlieren. Der Hinweis unter der Tabelle weist das jeweils aus.
+    <strong>Wichtig bei hohem Einkommen:</strong> Die Pensionsgutschrift ist bei der
+    Höchstbeitragsgrundlage gedeckelt` + (art === 'gsvg'
+      ? ` (${eurFmt2.format(CONST.GSVG_HBGL_MONAT)}/Monat × 12 = ${eurFmt.format(CONST.HBGL_JAHR)}/Jahr).`
+      : ` (${eurFmt2.format(CONST.HBGL_MONAT)}/Monat × 14 = ${eurFmt.format(CONST.HBGL_JAHR)}/Jahr inkl.
+        Sonderzahlungen).`) + ` Liegst du darüber, wirkt sich eine Reduktion gar nicht oder nur zum Teil auf
+    die Pension aus – du verlierst dann Einkommen, ohne Pension zu verlieren. Der Hinweis unter der Tabelle
+    weist das jeweils aus.
     <br><br>
-    Nicht berücksichtigt: dass ein geringeres Gehalt auch die Steuerersparnis beim Nachkauf senkt, und
-    etwaige kollektivvertragliche Effekte einer Teilzeitvereinbarung.`,
+    Nicht berücksichtigt: dass ein geringeres Einkommen auch die Steuerersparnis beim Nachkauf senkt` +
+    (art === 'gsvg'
+      ? `, und die SVS-Nachbemessung, die vorläufige Beiträge später anhand des Bescheids korrigiert.`
+      : `, und etwaige kollektivvertragliche Effekte einer Teilzeitvereinbarung.`),
   wvAmortisation: `Zahlt es sich aus, in der Lücke freiwillig weiter in die Pensionsversicherung einzuzahlen?
     Gerechnet wird <strong>ein Jahr Beitrag</strong> gegen die zusätzliche Nettopension, die dieses Jahr bringt.
     <br><br>
-    <strong>Die Höhe des Beitrags ist dabei egal:</strong> Beitrag (${(CONST.WV_SATZ * 100).toFixed(1)} %) und
-    Gutschrift (${(CONST.KONTOPROZENTSATZ * 100).toFixed(2)} %) sind beide linear zur Beitragsgrundlage – ob du
+    <strong>Die Höhe des Beitrags ist dabei egal:</strong> Beitrag (${pz(CONST.WV_SATZ * 100, 1)} %) und
+    Gutschrift (${pz(CONST.KONTOPROZENTSATZ * 100, 2)} %) sind beide linear zur Beitragsgrundlage – ob du
     den Mindestbeitrag (Grundlage ${eurFmt2.format(CONST.WV_BG_MIN)}/Monat) oder das Maximum
     (${eurFmt2.format(CONST.WV_BG_MAX)}/Monat) zahlst, ändert die Amortisationsdauer nicht. Ein höherer Beitrag
     bringt proportional mehr Pension, aber nicht schneller. Nur bei einem Sprung über eine Steuerstufe kann sich
@@ -901,7 +933,11 @@ infoDialog.addEventListener('click', (e) => {
 });
 document.querySelectorAll('.info-icon').forEach((btn) => {
   btn.addEventListener('click', () => {
-    document.getElementById('infoDialogText').innerHTML = INFO_TEXTE[btn.dataset.info] || '';
+    // Manche Texte haengen von der Versicherungsart ab und sind deshalb Funktionen,
+    // die erst beim Oeffnen ausgewertet werden.
+    const eintrag = INFO_TEXTE[btn.dataset.info];
+    const text = typeof eintrag === 'function' ? eintrag(eingaben.versicherungsart) : (eintrag || '');
+    document.getElementById('infoDialogText').innerHTML = text;
     infoDialog.showModal();
   });
 });
