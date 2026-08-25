@@ -5,7 +5,7 @@ import {
   berechnePensionsszenario, addMonths, breakEvenPunkt, regelpensionsalter,
   amortisationEinMonat, wvAmortisation, entnahmedauerJahre, stundenreduzierungEffekt,
   svSatzDienstnehmer, istVollversichert, nettoErwerbseinkommenJahr,
-  jahresBeitragsgrundlage, steuerBemessung,
+  jahresBeitragsgrundlage, steuerBemessung, korridorVoraussetzungen, pensionistenabsetzbetrag, nettoMonat,
 } from './pension.js';
 
 // Referenzperson: geb. 24.02.1983, Konto 22.812 € per 01.01.2026, 203 VM per Stichtag,
@@ -160,15 +160,23 @@ test('regelpensionsalter: Männer immer 65, unabhängig vom Geburtsdatum', () =>
   assert.equal(regelpensionsalter('mann', '2000-01-01'), 65);
 });
 
-test('regelpensionsalter: Frauen-Übergangsjahrgänge laut Stufenplan', () => {
+test('regelpensionsalter: Frauen-Übergangsjahrgänge laut Stufenplan (ÖGB/PV, Stufen ab 1.1.1964)', () => {
   assert.equal(regelpensionsalter('frau', '1962-01-01'), 60);
-  assert.equal(regelpensionsalter('frau', '1965-01-01'), 62);
+  // Grenzen der Stufen: letzter Tag alt / erster Tag neu
+  assert.equal(regelpensionsalter('frau', '1963-12-31'), 60);
+  assert.equal(regelpensionsalter('frau', '1964-01-01'), 60.5);
+  assert.equal(regelpensionsalter('frau', '1964-06-30'), 60.5);
+  assert.equal(regelpensionsalter('frau', '1964-07-01'), 61);
+  assert.equal(regelpensionsalter('frau', '1965-01-01'), 61.5);
+  assert.equal(regelpensionsalter('frau', '1967-03-01'), 63.5);
+  assert.equal(regelpensionsalter('frau', '1968-06-30'), 64.5);
+  assert.equal(regelpensionsalter('frau', '1968-07-01'), 65);
   assert.equal(regelpensionsalter('frau', '1970-01-01'), 65);
 });
 
 test('Frau mit Regelpensionsalter 62: voller Anspruch (0 Abschlag) genau am eigenen Regelalter', () => {
   const r = berechnePensionsszenario({
-    ...basis, geschlecht: 'frau', geburtsdatum: '1965-01-01', ausstiegsalter: 62, antrittsalter: 62,
+    ...basis, geschlecht: 'frau', geburtsdatum: '1965-09-01', ausstiegsalter: 62, antrittsalter: 62,
   });
   assert.ok(r.ok);
   assert.equal(r.regelalter, 62);
@@ -178,7 +186,7 @@ test('Frau mit Regelpensionsalter 62: voller Anspruch (0 Abschlag) genau am eige
 
 test('Frau mit Regelpensionsalter 62: 2 Jahre früher (60) unterhalb Korridor-Untergrenze -> kein Anspruch', () => {
   const r = berechnePensionsszenario({
-    ...basis, geschlecht: 'frau', geburtsdatum: '1965-01-01', ausstiegsalter: 60, antrittsalter: 60,
+    ...basis, geschlecht: 'frau', geburtsdatum: '1965-09-01', ausstiegsalter: 60, antrittsalter: 60,
   });
   assert.equal(r.ok, false);
   assert.equal(r.fehlercode, 'ZU_FRUEH');
@@ -186,7 +194,7 @@ test('Frau mit Regelpensionsalter 62: 2 Jahre früher (60) unterhalb Korridor-Un
 
 test('Frau mit Regelpensionsalter 64: Korridorpension mit 1 Jahr Abschlag bei Antritt 63', () => {
   const r = berechnePensionsszenario({
-    ...basis, geschlecht: 'frau', geburtsdatum: '1967-03-01', vmStart: 500, ausstiegsalter: 63, antrittsalter: 63,
+    ...basis, geschlecht: 'frau', geburtsdatum: '1967-09-01', vmStart: 500, ausstiegsalter: 63, antrittsalter: 63,
   });
   assert.equal(r.regelalter, 64);
   assert.ok(r.ok, `erwartete Anspruch, vm=${r.monate.vm}`);
@@ -654,6 +662,96 @@ test('GSVG-Zuverdienst über der Grenze: Versicherungsmonate und Gutschrift wie 
   assert.ok(drueber.monate.vmOhneNachkauf > drunter.monate.vmOhneNachkauf);
   assert.ok(drueber.gutschrift > drunter.gutschrift);
   assert.equal(drueber.kapital.svJahr, 0, 'KV-Selbstversicherung entfällt');
+});
+
+test('korridorVoraussetzungen: Anhebung nach Geburtsdatum (WKO-Tabelle)', () => {
+  assert.deepEqual(korridorVoraussetzungen('1963-12-31'), { alter: 62, monate: 480 });
+  assert.deepEqual(korridorVoraussetzungen('1964-01-01'), { alter: 62 + 2 / 12, monate: 482 });
+  assert.deepEqual(korridorVoraussetzungen('1964-05-15'), { alter: 62 + 4 / 12, monate: 484 });
+  assert.deepEqual(korridorVoraussetzungen('1965-08-01'), { alter: 63, monate: 494 });
+  assert.deepEqual(korridorVoraussetzungen('1966-09-30'), { alter: 63, monate: 502 });
+  assert.deepEqual(korridorVoraussetzungen('1966-10-01'), { alter: 63, monate: 504 });
+  assert.deepEqual(korridorVoraussetzungen('1983-02-24'), { alter: 63, monate: 504 });
+});
+
+test('Korridor-Übergangsjahrgang: 502 Monate reichen für Jahrgang 1965 (494 nötig), nicht für 1983', () => {
+  const b = {
+    ...basis, konto: 30000, vmStart: 470, gehalt: 4000, ausstiegsalter: 63, antrittsalter: 63, nachkaufMonate: 0,
+  };
+  const alt = berechnePensionsszenario({ ...b, geburtsdatum: '1965-08-01', kontoStichtag: '2026-01-01' });
+  assert.equal(alt.korridor.monate, 494);
+  assert.ok(alt.ok, `Jahrgang 1965 mit ${alt.monate.vm} Monaten muss Anspruch haben`);
+  const jung = berechnePensionsszenario({ ...b, geburtsdatum: '1983-02-24' });
+  assert.equal(jung.korridor.monate, 504);
+});
+
+test('Korridor-Übergangsjahrgang: Jahrgang 1963 darf mit 62 in Korridorpension', () => {
+  const r = berechnePensionsszenario({
+    ...basis, geburtsdatum: '1963-06-15', konto: 40000, vmStart: 480, gehalt: 4000,
+    ausstiegsalter: 62, antrittsalter: 62, nachkaufMonate: 0,
+  });
+  assert.equal(r.korridor.alter, 62);
+  assert.ok(r.ok, r.fehlercode);
+  // 3 Jahre vor 65 -> 15,3 % Abschlag
+  assert.ok(Math.abs(r.abschlag - 0.153) < 1e-9);
+});
+
+test('stichtagPension: Geburtstag am Monatsersten ist selbst der Stichtag', () => {
+  assert.deepEqual(stichtagPension('1983-03-01', 65), new Date(2048, 2, 1));
+  assert.deepEqual(stichtagPension('1983-03-02', 65), new Date(2048, 3, 1));
+});
+
+test('nettoMonat: Sonderzahlungen unter der Freigrenze sind steuerfrei', () => {
+  // brutto 1.000 -> SZ 2.000 <= 2.615; Tarifsteuer 0; PAB greift; nur KV bleibt
+  const erwartet = ((14000 - 0.06 * 14000) / 14) * CONST.NETTO_KALIBRIERUNG;
+  assert.ok(Math.abs(nettoMonat(1000) - erwartet) < 1e-6, `${nettoMonat(1000)} vs ${erwartet}`);
+});
+
+test('pensionistenabsetzbetrag: voll, einschleifend, null', () => {
+  assert.equal(pensionistenabsetzbetrag(20000), CONST.PAB);
+  assert.equal(pensionistenabsetzbetrag(CONST.PAB_VOLL_BIS), CONST.PAB);
+  assert.equal(pensionistenabsetzbetrag(CONST.PAB_NULL_AB), 0);
+  const mitte = (CONST.PAB_VOLL_BIS + CONST.PAB_NULL_AB) / 2;
+  assert.ok(Math.abs(pensionistenabsetzbetrag(mitte) - CONST.PAB / 2) < 1e-9);
+  // Referenzfall (61.096 EUR Jahrespension) liegt weit darueber -> Kalibrierung unberuehrt
+  assert.equal(pensionistenabsetzbetrag(4364 * 12 * 0.94), 0);
+});
+
+test('nettoErwerbseinkommenJahr ASVG: Verkehrsabsetzbetrag und SV-Rückerstattung bei Geringfügig+1', () => {
+  const b = CONST.GF_PLUS_BG;
+  const brutto = b * 14;
+  const sv = CONST.GF_SV_DN_SATZ * brutto;
+  // Tarifsteuer 0, minus VAB 496 -> negativ -> Rueckerstattung min(496, 55 % der SV, 496)
+  const erstattung = Math.min(CONST.VAB, CONST.SV_RUECKERSTATTUNG_SATZ * sv, CONST.SV_RUECKERSTATTUNG_MAX);
+  const erwartet = brutto - sv + erstattung;
+  assert.ok(Math.abs(nettoErwerbseinkommenJahr(b, 'asvg') - erwartet) < 1e-6,
+    `${nettoErwerbseinkommenJahr(b, 'asvg')} vs ${erwartet}`);
+  assert.ok(erstattung > 400, 'die Rueckerstattung ist hier materiell');
+});
+
+test('nettoErwerbseinkommenJahr ASVG: bei hoeherem Einkommen mindert der VAB die Steuer um genau 496', () => {
+  const b = 3000;
+  const lauf = b * 12; const sz = b * 2;
+  const satz = svSatzDienstnehmer(b, 'asvg');
+  const svLauf = satz * lauf; const svSz = satz * sz;
+  const lst = tarif(lauf - svLauf) - CONST.VAB;
+  assert.ok(lst > 0);
+  const lstSz = Math.max(0, (sz - svSz) - CONST.SZ_FREIBETRAG) * CONST.SZ_STEUERSATZ;
+  const erwartet = lauf + sz - svLauf - svSz - lst - lstSz;
+  assert.ok(Math.abs(nettoErwerbseinkommenJahr(b, 'asvg') - erwartet) < 1e-6);
+});
+
+test('GSVG-Zuverdienst: Gutschrift und Netto lesen die Eingabe gleich (Gewinn vor SV = Grundlage)', () => {
+  const b = {
+    ...basis, gehalt: 52290, versicherungsart: 'gsvg', ausstiegsalter: 60, antrittsalter: 65,
+    nachkaufMonate: 0, wvAn: false,
+  };
+  const ohne = berechnePensionsszenario({ ...b, gfEinkommen: 0 });
+  const mit = berechnePensionsszenario({ ...b, gfEinkommen: 2000 });
+  // Gutschrift: 1,78 % der Jahresgrundlage 24.000 (kein Fixpunkt, Eingabe ist bereits BG)
+  const erwartet = (ohne.monate.lueckenmonate / 12) * CONST.KONTOPROZENTSATZ * 24000;
+  assert.ok(Math.abs((mit.gutschrift - ohne.gutschrift) - erwartet) < 1e-6,
+    `${mit.gutschrift - ohne.gutschrift} vs ${erwartet}`);
 });
 
 test('berechnePensionsszenario liefert amortisation + wvVergleich', () => {

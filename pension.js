@@ -26,6 +26,8 @@ export const CONST = {
   NK_KOSTEN_MONAT_MAX: 1580.04,
   NK_MAX_MONATE: 108,
 
+  // Endausbau der Korridorpension (Jahrgaenge ab 1.10.1966). Fuer aeltere Jahrgaenge
+  // gelten niedrigere Werte, siehe KORRIDOR_STUFEN / korridorVoraussetzungen().
   KORRIDOR_ALTER: 63,
   KORRIDOR_MONATE: 504,
   ABSCHLAG_PA: 0.051,
@@ -63,7 +65,24 @@ export const CONST = {
   // Freigrenze fuer sonstige Bezuege (Paragraf 67 EStG), Wert 2026: bleibt das
   // Jahressechstel darunter, entfaellt die Besteuerung der Sonderzahlungen ganz.
   SZ_FREIGRENZE: 2615,
+  // Seit 1.6.2025 6 % (vorher 5,1 %), Quelle PV/SVS.
   KV_PENSION: 0.06,
+  // Pensionistenabsetzbetrag 2026: 1.020 EUR bis 21.614 EUR zu versteuernder laufender
+  // Pension, linear auf 0 bei 31.494 EUR. Der erhoehte PAB (1.502, an Partnereinkommen
+  // gebunden) und die SV-Rueckerstattung fuer Pensionisten sind nicht abgebildet.
+  PAB: 1020,
+  PAB_VOLL_BIS: 21614,
+  PAB_NULL_AB: 31494,
+  // Verkehrsabsetzbetrag 2026 fuer Arbeitnehmer; der Zuschlag (bis 804 EUR bei niedrigem
+  // Einkommen) und der erhoehte VAB (Pendler) sind nicht abgebildet.
+  VAB: 496,
+  // SV-Rueckerstattung ("Negativsteuer") 2026: 55 % der SV-Beitraege, hoechstens 496 EUR,
+  // wenn die Steuer nach Absetzbetraegen negativ wuerde.
+  SV_RUECKERSTATTUNG_SATZ: 0.55,
+  SV_RUECKERSTATTUNG_MAX: 496,
+  // Empirischer Korrekturfaktor, am offiziellen PV-Rechner bei EINEM Datenpunkt
+  // (Antritt 65, brutto 4.364) kalibriert. Er kompensiert dort rund 88 EUR/Monat, deren
+  // Ursache nicht bekannt ist; fuer niedrige Pensionen ist er ungeprueft.
   NETTO_KALIBRIERUNG: 0.973,
 
   // Alternative "ETF statt Nachkauf": ca. 7 % Bruttorendite p.a. minus 27,5 % KESt.
@@ -122,6 +141,9 @@ export function monateZwischen(d1, d2) {
 export function stichtagPension(geburtsdatum, alter) {
   const g = toDate(geburtsdatum);
   const geburtstag = new Date(g.getFullYear() + alter, g.getMonth(), g.getDate());
+  // Stichtag ist der auf das Ereignis folgende Monatserste -- faellt der Geburtstag selbst
+  // auf einen Monatsersten, ist er der Stichtag.
+  if (geburtstag.getDate() === 1) return geburtstag;
   return new Date(geburtstag.getFullYear(), geburtstag.getMonth() + 1, 1);
 }
 
@@ -164,21 +186,48 @@ export function steuerBemessung(betrag, versicherungsart = 'asvg') {
   return 12 * betrag - 12 * Math.min(betrag, CONST.HBGL_MONAT) * CONST.SV_DN_SATZ;
 }
 
-// Stufenweise Anhebung des Frauen-Regelpensionsalters 2024–2033 (von 60 auf 65,
-// abhängig vom Geburtsdatum; danach gleich wie Männer). Randfälle exakt am
-// Stichtag: im Zweifel bei der PV die genaue Zahl erfragen.
+// Stufenweise Anhebung des Frauen-Regelpensionsalters (von 60 auf 65, abhaengig vom
+// Geburtsdatum; danach gleich wie Maenner). Die Stufen beginnen mit dem Jahrgang 1964:
+// das urspruengliche BVG von 1992 setzte bei 2.12.1963 an, der Parlamentsbeschluss vom
+// Februar 2023 verschob alle Stufen um einen Monat nach hinten. Quelle: OeGB / PV.
 const FRAUEN_STUFEN = [
-  { bis: '1963-06-01', alter: 60 },
-  { bis: '1963-12-01', alter: 60.5 },
-  { bis: '1964-06-01', alter: 61 },
-  { bis: '1964-12-01', alter: 61.5 },
-  { bis: '1965-06-01', alter: 62 },
-  { bis: '1965-12-01', alter: 62.5 },
-  { bis: '1966-06-01', alter: 63 },
-  { bis: '1966-12-01', alter: 63.5 },
-  { bis: '1967-06-01', alter: 64 },
-  { bis: '1967-12-01', alter: 64.5 },
+  { bis: '1963-12-31', alter: 60 },
+  { bis: '1964-06-30', alter: 60.5 },
+  { bis: '1964-12-31', alter: 61 },
+  { bis: '1965-06-30', alter: 61.5 },
+  { bis: '1965-12-31', alter: 62 },
+  { bis: '1966-06-30', alter: 62.5 },
+  { bis: '1966-12-31', alter: 63 },
+  { bis: '1967-06-30', alter: 63.5 },
+  { bis: '1967-12-31', alter: 64 },
+  { bis: '1968-06-30', alter: 64.5 },
 ];
+
+// Anhebung der Korridorpension ab 1.1.2026: Mindestalter von 62 auf 63 und noetige
+// Versicherungsmonate von 480 auf 504, quartalsweise um je 2 Monate nach Geburtsdatum.
+// Quelle: WKO. Alter in Jahren (Bruchteile = Monate/12).
+const KORRIDOR_STUFEN = [
+  { bis: '1963-12-31', alter: 62, monate: 480 },
+  { bis: '1964-03-31', alter: 62 + 2 / 12, monate: 482 },
+  { bis: '1964-06-30', alter: 62 + 4 / 12, monate: 484 },
+  { bis: '1964-09-30', alter: 62.5, monate: 486 },
+  { bis: '1964-12-31', alter: 62 + 8 / 12, monate: 488 },
+  { bis: '1965-03-31', alter: 62 + 10 / 12, monate: 490 },
+  { bis: '1965-06-30', alter: 63, monate: 492 },
+  { bis: '1965-09-30', alter: 63, monate: 494 },
+  { bis: '1965-12-31', alter: 63, monate: 496 },
+  { bis: '1966-03-31', alter: 63, monate: 498 },
+  { bis: '1966-06-30', alter: 63, monate: 500 },
+  { bis: '1966-09-30', alter: 63, monate: 502 },
+];
+
+export function korridorVoraussetzungen(geburtsdatum) {
+  const g = toDate(geburtsdatum);
+  for (const stufe of KORRIDOR_STUFEN) {
+    if (g <= toDate(stufe.bis)) return { alter: stufe.alter, monate: stufe.monate };
+  }
+  return { alter: CONST.KORRIDOR_ALTER, monate: CONST.KORRIDOR_MONATE };
+}
 
 export function regelpensionsalter(geschlecht, geburtsdatum) {
   if (geschlecht !== 'frau') return CONST.REGELPENSIONSALTER;
@@ -225,12 +274,18 @@ export function nettoErwerbseinkommenJahr(bruttoMonat, versicherungsart = 'asvg'
   const sz = bruttoMonat * 2;
   const svLauf = satz * Math.min(lauf, CONST.HBGL_MONAT * 12);
   const svSz = satz * Math.min(sz, CONST.HBGL_JAHR - CONST.HBGL_MONAT * 12);
-  const lst = tarif(lauf - svLauf);
+  // Tarifsteuer minus Verkehrsabsetzbetrag; wird das negativ, greift die SV-Rueck-
+  // erstattung ("Negativsteuer"): 55 % der SV-Beitraege, hoechstens 496 EUR.
+  const steuerNachVab = tarif(lauf - svLauf) - CONST.VAB;
+  const lst = Math.max(0, steuerNachVab);
+  const erstattung = steuerNachVab < 0
+    ? Math.min(-steuerNachVab, CONST.SV_RUECKERSTATTUNG_SATZ * (svLauf + svSz), CONST.SV_RUECKERSTATTUNG_MAX)
+    : 0;
   // Freigrenze: bleiben die sonstigen Bezuege darunter, sind sie zur Gaenze steuerfrei.
   const lstSz = sz <= CONST.SZ_FREIGRENZE
     ? 0
     : Math.max(0, (sz - svSz) - CONST.SZ_FREIBETRAG) * CONST.SZ_STEUERSATZ;
-  return lauf + sz - svLauf - svSz - lst - lstSz;
+  return lauf + sz - svLauf - svSz - lst - lstSz + erstattung;
 }
 
 export function versicherungsmonate({
@@ -269,8 +324,12 @@ export function gutschriftBeiAntritt({
   if (istVollversichert(gfEinkommen)) {
     // Ueber der Grenze besteht Pflichtversicherung. Im ASVG mit Sonderzahlungen (x14),
     // im GSVG ohne (x12, dafuer mit Hinzurechnung der Beitraege).
+    // Der Zuverdienst-Regler meint in beiden Systemen den Betrag VOR SV-Abzug (im ASVG
+    // das Brutto, im GSVG den Gewinn vor Beitraegen = Beitragsgrundlage). Deshalb hier
+    // KEIN Fixpunkt wie beim Jahreseinkommen laut Bescheid, sondern direkt 1,78 % der
+    // (auf Mindest-/Hoechstgrundlage begrenzten) Grundlage -- passend zur Netto-Rechnung.
     g += (lueckenmonate / 12) * (versicherungsart === 'gsvg'
-      ? jahresgutschrift(gfEinkommen * 12, 'gsvg')
+      ? CONST.KONTOPROZENTSATZ * clamp(gfEinkommen * 12, CONST.GSVG_MIND_BG_MONAT * 12, CONST.HBGL_JAHR)
       : jahresgutschrift(gfEinkommen, 'asvg'));
   } else if (wvAn) {
     g += (lueckenmonate / 12) * CONST.KONTOPROZENTSATZ * CONST.WV_BG_MIN * 12;
@@ -287,18 +346,19 @@ export function gutschriftBeiAntritt({
 // kein Anspruch, auch wenn das persönliche Regelpensionsalter niedriger liegt.
 export function anspruchUndBrutto({
   antrittsalter, vm, gutschrift, regelalter = CONST.REGELPENSIONSALTER,
+  korridor = { alter: CONST.KORRIDOR_ALTER, monate: CONST.KORRIDOR_MONATE },
 }) {
   if (antrittsalter < regelalter) {
-    if (antrittsalter < CONST.KORRIDOR_ALTER) {
+    if (antrittsalter < korridor.alter) {
       return {
         ok: false, fehlercode: 'ZU_FRUEH', fehlendeMonate: null, abschlag: null, zuschlag: null, bruttoMonat: null,
       };
     }
-    if (vm < CONST.KORRIDOR_MONATE) {
+    if (vm < korridor.monate) {
       return {
         ok: false,
         fehlercode: 'ZU_WENIG_MONATE',
-        fehlendeMonate: CONST.KORRIDOR_MONATE - vm,
+        fehlendeMonate: korridor.monate - vm,
         abschlag: null,
         zuschlag: null,
         bruttoMonat: null,
@@ -331,12 +391,24 @@ export function tarif(x) {
   return steuer;
 }
 
+// Pensionistenabsetzbetrag: voll bis PAB_VOLL_BIS, dann linear einschleifend auf 0.
+// Bemessung sind die zu versteuernden laufenden Pensionseinkuenfte (ohne Sonderzahlungen).
+export function pensionistenabsetzbetrag(zvLaufend) {
+  if (zvLaufend <= CONST.PAB_VOLL_BIS) return CONST.PAB;
+  if (zvLaufend >= CONST.PAB_NULL_AB) return 0;
+  return CONST.PAB * (CONST.PAB_NULL_AB - zvLaufend) / (CONST.PAB_NULL_AB - CONST.PAB_VOLL_BIS);
+}
+
 export function nettoMonat(bruttoMonat) {
   const lauf = 12 * bruttoMonat;
   const sz = 2 * bruttoMonat;
   const kv = CONST.KV_PENSION * (lauf + sz);
-  const lst = tarif(lauf * (1 - CONST.KV_PENSION));
-  const lstSz = Math.max(0, sz * (1 - CONST.KV_PENSION) - CONST.SZ_FREIBETRAG) * CONST.SZ_STEUERSATZ;
+  const zvLaufend = lauf * (1 - CONST.KV_PENSION);
+  const lst = Math.max(0, tarif(zvLaufend) - pensionistenabsetzbetrag(zvLaufend));
+  // Sonderzahlungen: bis zur Freigrenze steuerfrei, sonst 6 % nach Freibetrag.
+  const lstSz = sz <= CONST.SZ_FREIGRENZE
+    ? 0
+    : Math.max(0, sz * (1 - CONST.KV_PENSION) - CONST.SZ_FREIBETRAG) * CONST.SZ_STEUERSATZ;
   return ((lauf + sz - kv - lst - lstSz) / 14) * CONST.NETTO_KALIBRIERUNG;
 }
 
@@ -384,10 +456,10 @@ export function kapitalbedarf({
 // "gelb" nur, wenn der Nachkauf für den Anspruch tatsächlich nötig war – also unterhalb
 // des Regelpensionsalters, wo die Korridorpension 504 Versicherungsmonate verlangt. Ab dem
 // Regelpensionsalter erhöht ein Nachkauf bloß die Pension, er entscheidet nichts.
-function ampelFuer(anspruch, monate, antrittsalter, regelalter) {
+function ampelFuer(anspruch, monate, antrittsalter, regelalter, korridor) {
   if (!anspruch.ok) return 'rot';
   const nachkaufNoetig = antrittsalter < regelalter
-    && monate.vmOhneNachkauf < CONST.KORRIDOR_MONATE;
+    && monate.vmOhneNachkauf < korridor.monate;
   return nachkaufNoetig ? 'gelb' : 'gruen';
 }
 
@@ -428,7 +500,7 @@ export function entnahmedauerJahre(kapital, entnahmeProMonat, jahresRendite) {
 // nicht oder nur teilweise, weil die Gutschrift ohnehin bei der HBGl gedeckelt ist.
 export function stundenreduzierungEffekt({
   reduktionProzent, gehalt, versicherungsart = 'asvg', konto, arbeitsmonate, lueckenmonate, wvAn, nkMonate,
-  antrittsalter, vm, regelalter, bruttoMonat, nettoMonatVoll, ok,
+  antrittsalter, vm, regelalter, korridor, bruttoMonat, nettoMonatVoll, ok,
 }) {
   if (!ok || !reduktionProzent) return null;
   const gehaltReduziert = gehalt * (1 - reduktionProzent / 100);
@@ -436,7 +508,7 @@ export function stundenreduzierungEffekt({
     konto, gehalt: gehaltReduziert, versicherungsart, arbeitsmonate, lueckenmonate, wvAn, nkMonate,
   });
   const anspruchReduziert = anspruchUndBrutto({
-    antrittsalter, vm, gutschrift: gutschriftReduziert, regelalter,
+    antrittsalter, vm, gutschrift: gutschriftReduziert, regelalter, korridor,
   });
   if (!anspruchReduziert.ok) return null;
   const bruttoReduziert = anspruchReduziert.bruttoMonat;
@@ -518,6 +590,7 @@ export function wvAmortisation(basis, { abschlag, zuschlag, ok, bruttoMonat }) {
 export function berechnePensionsszenario(eingaben) {
   const antrittsalter = Math.max(eingaben.antrittsalter, eingaben.ausstiegsalter);
   const regelalter = regelpensionsalter(eingaben.geschlecht, eingaben.geburtsdatum);
+  const korridor = korridorVoraussetzungen(eingaben.geburtsdatum);
   const monate = versicherungsmonate({ ...eingaben, antrittsalter, regelalter });
   const gutschrift = gutschriftBeiAntritt({
     konto: eingaben.konto,
@@ -530,7 +603,7 @@ export function berechnePensionsszenario(eingaben) {
     nkMonate: monate.nkMonate,
   });
   const anspruch = anspruchUndBrutto({
-    antrittsalter, vm: monate.vm, gutschrift, regelalter,
+    antrittsalter, vm: monate.vm, gutschrift, regelalter, korridor,
   });
   const netto = anspruch.ok ? nettoMonat(anspruch.bruttoMonat) : null;
   const jahreBisAntritt = monateZwischen(eingaben.kontoStichtag, monate.stichtagPension) / 12;
@@ -582,6 +655,7 @@ export function berechnePensionsszenario(eingaben) {
     antrittsalter,
     vm: monate.vm,
     regelalter,
+    korridor,
     bruttoMonat: anspruch.bruttoMonat,
     nettoMonatVoll: netto,
     ok: anspruch.ok,
@@ -590,6 +664,7 @@ export function berechnePensionsszenario(eingaben) {
   return {
     eingaben: { ...eingaben, antrittsalter },
     regelalter,
+    korridor,
     monate,
     gutschrift,
     ok: anspruch.ok,
@@ -604,7 +679,7 @@ export function berechnePensionsszenario(eingaben) {
     amortisation,
     wvVergleich,
     stundenreduzierung,
-    ampel: ampelFuer(anspruch, monate, antrittsalter, regelalter),
+    ampel: ampelFuer(anspruch, monate, antrittsalter, regelalter, korridor),
   };
 }
 

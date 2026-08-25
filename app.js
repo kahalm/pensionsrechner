@@ -1,7 +1,7 @@
 import {
   CONST, berechnePensionsszenario, vergleichsdiagramm, breakEvenPunkt, addMonths,
   versicherungsmonate, regelpensionsalter, nettoErwerbseinkommenJahr, istVollversichert,
-  svSatzDienstnehmer,
+  svSatzDienstnehmer, korridorVoraussetzungen,
 } from './pension.js';
 
 // Persönliche/eingegebene Werte starten bewusst leer (kein Beispiel-Vorausfüllen) –
@@ -402,9 +402,16 @@ function rendereLeerZustand() {
 }
 
 const STATUS_TEXT = {
-  ZU_FRUEH: () => `Vor Alter ${CONST.KORRIDOR_ALTER} besteht kein Anspruch auf Korridorpension.`,
-  ZU_WENIG_MONATE: (r) => `Es fehlen noch ${r.fehlendeMonate} Versicherungsmonate für die Korridorpension (mind. ${CONST.KORRIDOR_MONATE} Monate nötig).`,
+  ZU_FRUEH: (r) => `Vor Alter ${alterText(r.korridor.alter)} besteht für diesen Jahrgang kein Anspruch auf Korridorpension.`,
+  ZU_WENIG_MONATE: (r) => `Es fehlen noch ${r.fehlendeMonate} Versicherungsmonate für die Korridorpension (für diesen Jahrgang mind. ${r.korridor.monate} Monate nötig).`,
 };
+
+// Korridor-Mindestalter kann bei den Uebergangsjahrgaengen Monatsbruchteile haben.
+function alterText(alter) {
+  const jahre = Math.floor(alter);
+  const monate = Math.round((alter - jahre) * 12);
+  return monate ? `${jahre} Jahren ${monate} Monaten` : `${jahre}`;
+}
 
 function rendereStatus(suffix, ergebnis) {
   const el = document.getElementById(`statusline${suffix}`);
@@ -415,7 +422,7 @@ function rendereStatus(suffix, ergebnis) {
   }
   const regelalterText = numFmt.format(ergebnis.regelalter);
   if (ergebnis.ampel === 'gelb') {
-    const benoetigt = Math.max(0, CONST.KORRIDOR_MONATE - ergebnis.monate.vmOhneNachkauf);
+    const benoetigt = Math.max(0, ergebnis.korridor.monate - ergebnis.monate.vmOhneNachkauf);
     el.textContent = `Anspruch nur durch Nachkauf von ${benoetigt} Monaten erreicht.`;
   } else if (ergebnis.eingaben.antrittsalter < ergebnis.regelalter) {
     el.textContent = `Korridorpension möglich (Regelpensionsalter ${regelalterText}). Am Stichtag darf kein Erwerbseinkommen über der Geringfügigkeitsgrenze (${eurFmt2.format(CONST.GERINGFUEGIGKEIT)}/Monat) bezogen werden.`;
@@ -708,7 +715,7 @@ function passeNachkaufAnAntrittAn(suffix, { warnen = false } = {}) {
   const antritt = Number(antrittEl.value);
   if (antritt >= regelalter) return;
 
-  const benoetigt = CONST.KORRIDOR_MONATE - vmOhneNachkauf;
+  const benoetigt = korridorVoraussetzungen(els.geburtsdatum.value).monate - vmOhneNachkauf;
   const nkMax = Number(els.nkMaxMonate.value);
   if (benoetigt <= 0) return;
 
@@ -788,7 +795,8 @@ const INFO_TEXTE = {
     <strong>Auslandszeiten dazuzählen:</strong> Im Pensionskonto stehen nur die österreichischen Monate.
     Versicherungszeiten aus EU-/EWR-Staaten, der Schweiz und Abkommensstaaten werden für die
     <em>Anspruchsprüfung</em> aber mitgerechnet (Zusammenrechnung) – also für die
-    ${CONST.KORRIDOR_MONATE} Monate der Korridorpension. Trag hier daher die <em>Summe</em> ein, sonst
+    ${CONST.KORRIDOR_MONATE} Monate der Korridorpension (weniger für Jahrgänge vor Oktober 1966). Trag hier
+    daher die <em>Summe</em> ein, sonst
     fällt der Anspruch zu pessimistisch aus.
     <br><br>
     Die <em>Pensionshöhe</em> ist davon unberührt: Sie wird ausschließlich aus der österreichischen
@@ -816,6 +824,11 @@ const INFO_TEXTE = {
     die Statuszeile zeigt dann in Rot, wie viele Monate fehlen.`,
   nachkaufJahre: (art) => `Verteilt die Nachkaufkosten steuerlich auf 1–10 Jahre (nur relevant, wenn oben Monate
     gewählt sind).
+    <br><br>
+    <strong>Zwei Wege dahin:</strong> Entweder tatsächlich in Raten zahlen (mit der PV zu vereinbaren) – oder
+    auf einmal zahlen und den Abzug per <strong>Zehntelregelung</strong> auf zehn Jahre verteilen
+    (§ 18 Abs. 1 Z 1a EStG, nur als genaue Zehntel möglich, also Reglerstellung 10). Die Beiträge sind als
+    Sonderausgaben <em>ohne Höchstgrenze</em> abzugsfähig.
     <br><br>
     <strong>Kosten pro Monat:</strong> gerechnet wird mit ${eurFmt.format(CONST.NK_KOSTEN_MONAT)}. Der echte
     Beitrag hängt vom Antragsjahr und vom Kalenderjahr der Ausbildung ab – <em>nicht</em> vom Einkommen – und
@@ -875,7 +888,9 @@ const INFO_TEXTE = {
     <br><br>
     Nicht enthalten: dass die Pension lebenslang läuft, ein angespartes Kapital aber endlich ist – der
     Nachkauf ist damit auch eine Absicherung gegen ein langes Leben.`,
-  gfEinkommen: (art) => `Monatliches Einkommen zwischen Ausstieg und Antritt.
+  gfEinkommen: (art) => `Monatliches Einkommen zwischen Ausstieg und Antritt – ` + (art === 'gsvg'
+    ? 'als <strong>Gewinn vor Abzug der SVS-Beiträge</strong> (das ist die Beitragsgrundlage).'
+    : 'das <strong>Bruttogehalt</strong>.') + `
     Der Regler reicht von 0 bis zu deinem aktuellen Gehalt; die Marke sitzt auf der
     Geringfügigkeitsgrenze (${eurFmt2.format(CONST.GERINGFUEGIGKEIT)}/Monat).
     <br><br>
@@ -884,15 +899,19 @@ const INFO_TEXTE = {
     <strong>keine</strong> Versicherungsmonate und <strong>keine</strong> Krankenversicherung – die
     KV-Selbstversicherung (${eurFmt.format(CONST.KV_SELBST_MONAT * 12)}/Jahr) läuft weiter.
     <br>• <em>Darüber</em> greift die Vollversicherung: Die Lückenmonate zählen für die
-    ${CONST.KORRIDOR_MONATE} Monate der Korridorpension, die KV-Selbstversicherung entfällt, und es entsteht
+    Versicherungsmonate der Korridorpension (${CONST.KORRIDOR_MONATE}, für ältere Jahrgänge weniger), die
+    KV-Selbstversicherung entfällt, und es entsteht
     Pensionsgutschrift.
     <br><br>
     Schon ein Euro über der Grenze genügt für den vollen Versicherungsschutz.` + (art === 'gsvg'
       ? ` PV und KV sind dann allerdings zur Gänze selbst zu tragen
         (${pz(CONST.GSVG_PV * 100, 1)} % + ${pz(CONST.GSVG_KV * 100, 1)} % der Beitragsgrundlage), einen
-        Dienstgeberanteil gibt es nicht. Unterhalb der Grenze ist auf Antrag eine Ausnahme von KV und PV
-        möglich (Kleinunternehmerregelung, zusätzlich Umsatzgrenze 55.000 € und Vorversicherungszeiten);
-        es bleibt dann nur die Unfallversicherung mit ${eurFmt2.format(CONST.GSVG_UV_MONAT)}/Monat.`
+        Dienstgeberanteil gibt es nicht. Unterhalb der Grenze gilt: <em>Neue Selbständige</em> (ohne
+        Gewerbeschein) sind dann automatisch nicht pflichtversichert; <em>Gewerbetreibende</em> bleiben mit der
+        Mindestbeitragsgrundlage versichert, außer sie beantragen die Kleinunternehmer-Ausnahme (zusätzlich
+        Umsatzgrenze 55.000 € und Vorversicherungs- bzw. Altersvoraussetzungen). Der Rechner unterstellt hier
+        den ausgenommenen Fall: nur Unfallversicherung mit ${eurFmt2.format(CONST.GSVG_UV_MONAT)}/Monat, keine
+        Versicherungsmonate.`
       : ` Für Angestellte ist das der mit Abstand billigste Weg zu Versicherungsmonaten: rund
         ${eurFmt2.format(CONST.GF_PLUS_BG * 0.1025)} Dienstnehmeranteil pro Monat statt
         ${eurFmt.format(CONST.NK_KOSTEN_MONAT)} beim Nachkauf.`) + `

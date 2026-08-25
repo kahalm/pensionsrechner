@@ -591,3 +591,11 @@ table td {
   margin: 0 0.4rem;
   color: var(--text-muted);
 }
+
+.quellen h3 {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin: 1rem 0 0.3rem;
+}
