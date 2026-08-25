@@ -553,3 +553,28 @@ table td {
 
 .skala .unter { color: var(--negative); }
 .skala .ueber { color: var(--positive); }
+
+/* Ko-fi-Kachel: bewusst zurueckhaltend, der Rechner bleibt die Hauptsache. */
+.kofi-box {
+  text-align: center;
+}
+
+.kofi-box .hint {
+  margin: 0 auto 0.9rem;
+  max-width: 46ch;
+}
+
+.kofi-btn {
+  display: inline-block;
+  padding: 0.55rem 1.1rem;
+  background: #ff5e5b;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.kofi-btn:hover {
+  opacity: 0.9;
+}
