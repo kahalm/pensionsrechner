@@ -6,10 +6,12 @@ import {
 // nur was der Nutzer selbst einträgt, wird per localStorage/URL gemerkt.
 const DEFAULTS = {
   geburtsdatum: '',
+  geschlecht: '',
   konto: '',
   kontoStichtag: '',
   vmStart: '',
   gehalt: '',
+  nkMaxMonate: CONST.NK_MAX_MONATE,
   lebenshaltung: 2000,
   ausstiegsalter: 60,
   antrittsalter: 63,
@@ -17,6 +19,7 @@ const DEFAULTS = {
   nachkaufJahre: 5,
   wvAn: true,
   vergleichAn: false,
+  lebenshaltungB: 2000,
   ausstiegsalterB: 65,
   antrittsalterB: 65,
   nachkaufAnB: false,
@@ -24,16 +27,18 @@ const DEFAULTS = {
   wvAnB: true,
 };
 
-const PFLICHTFELDER = ['geburtsdatum', 'kontoStichtag', 'konto', 'vmStart', 'gehalt'];
+const PFLICHTFELDER = ['geburtsdatum', 'geschlecht', 'kontoStichtag', 'konto', 'vmStart', 'gehalt'];
 const NUMMER_FELDER = new Set(['konto', 'vmStart', 'gehalt']);
 
 // Kurze Query-Param-Schlüssel für teilbare Links.
 const PARAM_KEYS = {
   geburtsdatum: 'gd',
+  geschlecht: 'gs',
   konto: 'k',
   kontoStichtag: 'ks',
   vmStart: 'vm',
   gehalt: 'g',
+  nkMaxMonate: 'nkmax',
   lebenshaltung: 'lh',
   ausstiegsalter: 'aa',
   antrittsalter: 'pa',
@@ -41,6 +46,7 @@ const PARAM_KEYS = {
   nachkaufJahre: 'nj',
   wvAn: 'wv',
   vergleichAn: 'vgl',
+  lebenshaltungB: 'lhB',
   ausstiegsalterB: 'aaB',
   antrittsalterB: 'paB',
   nachkaufAnB: 'nkB',
@@ -55,6 +61,7 @@ const eurFmt = new Intl.NumberFormat('de-AT', { style: 'currency', currency: 'EU
 const eurFmt2 = new Intl.NumberFormat('de-AT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 });
 const pctFmt = new Intl.NumberFormat('de-AT', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const numFmt = new Intl.NumberFormat('de-AT');
+const dateFmt = new Intl.DateTimeFormat('de-AT');
 
 function ladeEingaben() {
   const url = new URLSearchParams(window.location.search);
@@ -103,10 +110,12 @@ function speichereEingaben(eingaben) {
 
 const els = {
   geburtsdatum: document.getElementById('geburtsdatum'),
+  geschlecht: document.getElementById('geschlecht'),
   konto: document.getElementById('konto'),
   kontoStichtag: document.getElementById('kontoStichtag'),
   vmStart: document.getElementById('vmStart'),
   gehalt: document.getElementById('gehalt'),
+  nkMaxMonate: document.getElementById('nkMaxMonate'),
   lebenshaltung: document.getElementById('lebenshaltung'),
   ausstiegsalter: document.getElementById('ausstiegsalter'),
   antrittsalter: document.getElementById('antrittsalter'),
@@ -114,6 +123,7 @@ const els = {
   nachkaufJahre: document.getElementById('nachkaufJahre'),
   wvAn: document.getElementById('wvAn'),
   vergleichAn: document.getElementById('vergleichAn'),
+  lebenshaltungB: document.getElementById('lebenshaltungB'),
   ausstiegsalterB: document.getElementById('ausstiegsalterB'),
   antrittsalterB: document.getElementById('antrittsalterB'),
   nachkaufAnB: document.getElementById('nachkaufAnB'),
@@ -126,21 +136,22 @@ const outs = {
   ausstiegsalter: document.getElementById('ausstiegsalterOut'),
   antrittsalter: document.getElementById('antrittsalterOut'),
   nachkaufJahre: document.getElementById('nachkaufJahreOut'),
+  lebenshaltungB: document.getElementById('lebenshaltungBOut'),
   ausstiegsalterB: document.getElementById('ausstiegsalterBOut'),
   antrittsalterB: document.getElementById('antrittsalterBOut'),
   nachkaufJahreB: document.getElementById('nachkaufJahreBOut'),
 };
 
-const dateFmt = new Intl.DateTimeFormat('de-AT');
-
 let eingaben = ladeEingaben();
 
 function eingabenInFormular() {
   els.geburtsdatum.value = eingaben.geburtsdatum;
+  els.geschlecht.value = eingaben.geschlecht;
   els.konto.value = eingaben.konto;
   els.kontoStichtag.value = eingaben.kontoStichtag;
   els.vmStart.value = eingaben.vmStart;
   els.gehalt.value = eingaben.gehalt;
+  els.nkMaxMonate.value = eingaben.nkMaxMonate;
   els.lebenshaltung.value = eingaben.lebenshaltung;
   els.ausstiegsalter.value = eingaben.ausstiegsalter;
   els.antrittsalter.min = eingaben.ausstiegsalter;
@@ -149,6 +160,7 @@ function eingabenInFormular() {
   els.nachkaufJahre.value = eingaben.nachkaufJahre;
   els.wvAn.checked = eingaben.wvAn;
   els.vergleichAn.checked = eingaben.vergleichAn;
+  els.lebenshaltungB.value = eingaben.lebenshaltungB;
   els.ausstiegsalterB.value = eingaben.ausstiegsalterB;
   els.antrittsalterB.min = eingaben.ausstiegsalterB;
   els.antrittsalterB.value = eingaben.antrittsalterB;
@@ -163,6 +175,7 @@ function aktualisiereOutputs() {
   outs.ausstiegsalter.textContent = eingaben.ausstiegsalter;
   outs.antrittsalter.textContent = eingaben.antrittsalter;
   outs.nachkaufJahre.textContent = eingaben.nachkaufJahre;
+  outs.lebenshaltungB.textContent = eurFmt.format(eingaben.lebenshaltungB);
   outs.ausstiegsalterB.textContent = eingaben.ausstiegsalterB;
   outs.antrittsalterB.textContent = eingaben.antrittsalterB;
   outs.nachkaufJahreB.textContent = eingaben.nachkaufJahreB;
@@ -178,10 +191,12 @@ function leseZahlfeld(el) {
 function ausFormularLesen() {
   eingaben = {
     geburtsdatum: els.geburtsdatum.value,
+    geschlecht: els.geschlecht.value,
     konto: leseZahlfeld(els.konto),
     kontoStichtag: els.kontoStichtag.value,
     vmStart: leseZahlfeld(els.vmStart),
     gehalt: leseZahlfeld(els.gehalt),
+    nkMaxMonate: Number(els.nkMaxMonate.value),
     lebenshaltung: Number(els.lebenshaltung.value),
     ausstiegsalter: Number(els.ausstiegsalter.value),
     antrittsalter: Math.max(Number(els.antrittsalter.value), Number(els.ausstiegsalter.value)),
@@ -189,6 +204,7 @@ function ausFormularLesen() {
     nachkaufJahre: Number(els.nachkaufJahre.value),
     wvAn: els.wvAn.checked,
     vergleichAn: els.vergleichAn.checked,
+    lebenshaltungB: Number(els.lebenshaltungB.value),
     ausstiegsalterB: Number(els.ausstiegsalterB.value),
     antrittsalterB: Math.max(Number(els.antrittsalterB.value), Number(els.ausstiegsalterB.value)),
     nachkaufAnB: els.nachkaufAnB.checked,
@@ -219,16 +235,16 @@ function neuBerechnenUndRendern() {
     return;
   }
 
-  const ergebnis = berechnePensionsszenario(eingaben);
-  rendereStatus(ergebnis);
-  rendereKarten(ergebnis);
-  rendereNachkauf(ergebnis);
-  rendereDetails(ergebnis);
+  const ergebnisA = berechnePensionsszenario(eingaben);
+  rendereScenario('A', ergebnisA, eingaben.lebenshaltung, eingaben.nachkaufAn);
   rendereChart(eingaben);
+
+  document.getElementById('ergebnisBoxB').hidden = !eingaben.vergleichAn;
 
   if (eingaben.vergleichAn) {
     const eingabenB = {
       ...eingaben,
+      lebenshaltung: eingaben.lebenshaltungB,
       ausstiegsalter: eingaben.ausstiegsalterB,
       antrittsalter: eingaben.antrittsalterB,
       nachkaufAn: eingaben.nachkaufAnB,
@@ -236,27 +252,34 @@ function neuBerechnenUndRendern() {
       wvAn: eingaben.wvAnB,
     };
     const ergebnisB = berechnePensionsszenario(eingabenB);
-    rendereVergleich(ergebnis, ergebnisB, eingaben.geburtsdatum);
+    rendereScenario('B', ergebnisB, eingabenB.lebenshaltung, eingabenB.nachkaufAn);
+    rendereVergleich(ergebnisA, ergebnisB, eingaben.geburtsdatum);
   } else {
     document.getElementById('vergleichBox').hidden = true;
   }
 }
 
 function rendereLeerZustand() {
-  const status = document.getElementById('statusline');
-  status.className = 'statusline neutral';
-  status.textContent = 'Bitte Geburtsdatum, Pensionskonto-Gutschrift, Gutschrift-Stichtag, Versicherungsmonate und Gehalt ausfüllen.';
-  document.getElementById('cardBrutto').textContent = '–';
-  document.getElementById('cardNetto').textContent = '–';
-  const diff = document.getElementById('cardDifferenz');
-  diff.textContent = '–';
-  diff.classList.remove('positive', 'negative');
-  document.getElementById('cardKapital').textContent = '–';
-  document.getElementById('nachkaufBox').hidden = true;
+  const statusA = document.getElementById('statuslineA');
+  statusA.className = 'statusline neutral';
+  statusA.textContent = 'Bitte Geburtsdatum, Geschlecht, Pensionskonto-Gutschrift, Gutschrift-Stichtag, Versicherungsmonate und Gehalt ausfüllen.';
+  document.getElementById('statuslineB').className = 'statusline neutral';
+  document.getElementById('statuslineB').textContent = '';
+
+  for (const suffix of ['A', 'B']) {
+    zelle(`cardBrutto${suffix}`, '–');
+    zelle(`cardNetto${suffix}`, '–');
+    const diff = document.getElementById(`cardDifferenz${suffix}`);
+    diff.textContent = '–';
+    diff.classList.remove('positive', 'negative');
+    zelle(`cardKapital${suffix}`, '–');
+    document.getElementById(`nachkaufBox${suffix}`).hidden = true;
+    ['dVm', 'dNk', 'dGutschrift', 'dRegelalter', 'dAbschlagZuschlag', 'dSvJahr', 'dKapitalPuffer'].forEach((praefix) => {
+      zelle(`${praefix}${suffix}`, '–');
+    });
+  }
+  document.getElementById('ergebnisBoxB').hidden = true;
   document.getElementById('vergleichBox').hidden = true;
-  ['dVm', 'dNk', 'dGutschrift', 'dAbschlagZuschlag', 'dSvJahr', 'dKapitalPuffer'].forEach((id) => {
-    document.getElementById(id).textContent = '–';
-  });
   document.getElementById('chart').innerHTML = '';
 }
 
@@ -265,67 +288,76 @@ const STATUS_TEXT = {
   ZU_WENIG_MONATE: (r) => `Es fehlen noch ${r.fehlendeMonate} Versicherungsmonate für die Korridorpension (mind. ${CONST.KORRIDOR_MONATE} Monate nötig).`,
 };
 
-function rendereStatus(ergebnis) {
-  const el = document.getElementById('statusline');
+function rendereStatus(suffix, ergebnis) {
+  const el = document.getElementById(`statusline${suffix}`);
   el.className = `statusline ${ergebnis.ampel}`;
   if (!ergebnis.ok) {
     el.textContent = STATUS_TEXT[ergebnis.fehlercode](ergebnis);
     return;
   }
+  const regelalterText = numFmt.format(ergebnis.regelalter);
   if (ergebnis.ampel === 'gelb') {
     el.textContent = `Anspruch nur durch Nachkauf von ${ergebnis.monate.nkMonate} Monaten erreicht.`;
-  } else if (eingaben.antrittsalter < CONST.REGELPENSIONSALTER) {
-    el.textContent = `Korridorpension möglich. Am Stichtag darf kein Erwerbseinkommen über der Geringfügigkeitsgrenze (${eurFmt2.format(CONST.GERINGFUEGIGKEIT)}/Monat) bezogen werden.`;
+  } else if (ergebnis.eingaben.antrittsalter < ergebnis.regelalter) {
+    el.textContent = `Korridorpension möglich (Regelpensionsalter ${regelalterText}). Am Stichtag darf kein Erwerbseinkommen über der Geringfügigkeitsgrenze (${eurFmt2.format(CONST.GERINGFUEGIGKEIT)}/Monat) bezogen werden.`;
   } else {
-    el.textContent = 'Alterspension – Anspruch erfüllt.';
+    el.textContent = `Alterspension (Regelpensionsalter ${regelalterText}) – Anspruch erfüllt.`;
   }
 }
 
-function rendereKarten(ergebnis) {
-  const brutto = document.getElementById('cardBrutto');
-  const netto = document.getElementById('cardNetto');
-  const diff = document.getElementById('cardDifferenz');
-  const kapital = document.getElementById('cardKapital');
+function zelle(id, text) {
+  document.getElementById(id).textContent = text;
+}
 
-  brutto.textContent = ergebnis.ok ? eurFmt.format(ergebnis.bruttoMonat) : '–';
-  netto.textContent = ergebnis.ok ? eurFmt.format(ergebnis.nettoMonat) : '–';
+function rendereKarten(suffix, ergebnis, lebenshaltung) {
+  zelle(`cardBrutto${suffix}`, ergebnis.ok ? eurFmt.format(ergebnis.bruttoMonat) : '–');
+  zelle(`cardNetto${suffix}`, ergebnis.ok ? eurFmt.format(ergebnis.nettoMonat) : '–');
 
+  const diff = document.getElementById(`cardDifferenz${suffix}`);
   diff.classList.remove('positive', 'negative');
   if (ergebnis.ok) {
-    const differenz = ergebnis.nettoMonat - eingaben.lebenshaltung;
+    const differenz = ergebnis.nettoMonat - lebenshaltung;
     diff.textContent = `${differenz >= 0 ? '+' : ''}${eurFmt.format(differenz)}`;
     diff.classList.add(differenz >= 0 ? 'positive' : 'negative');
   } else {
     diff.textContent = '–';
   }
 
-  kapital.textContent = eurFmt.format(ergebnis.kapital.kapitalPuffer);
+  zelle(`cardKapital${suffix}`, eurFmt.format(ergebnis.kapital.kapitalPuffer));
 }
 
-function rendereNachkauf(ergebnis) {
-  const box = document.getElementById('nachkaufBox');
-  if (!eingaben.nachkaufAn || ergebnis.monate.nkMonate <= 0) {
+function rendereNachkauf(suffix, ergebnis, nachkaufAn) {
+  const box = document.getElementById(`nachkaufBox${suffix}`);
+  if (!nachkaufAn || ergebnis.monate.nkMonate <= 0) {
     box.hidden = true;
     return;
   }
   box.hidden = false;
-  document.getElementById('nkMonate').textContent = numFmt.format(ergebnis.monate.nkMonate);
-  document.getElementById('nkKostenVoll').textContent = eurFmt.format(ergebnis.nachkauf.kostenVoll);
-  document.getElementById('nkErsparnis').textContent = eurFmt.format(ergebnis.nachkauf.ersparnis);
-  document.getElementById('nkKostenNetto').textContent = eurFmt.format(ergebnis.nachkauf.kostenNetto);
-  document.getElementById('nkEffSatz').textContent = pctFmt.format(ergebnis.nachkauf.effSatz);
-  document.getElementById('nkRate').textContent = eurFmt.format(ergebnis.nachkauf.ratePerJahr);
+  zelle(`nkMonate${suffix}`, numFmt.format(ergebnis.monate.nkMonate));
+  zelle(`nkKostenVoll${suffix}`, eurFmt.format(ergebnis.nachkauf.kostenVoll));
+  zelle(`nkErsparnis${suffix}`, eurFmt.format(ergebnis.nachkauf.ersparnis));
+  zelle(`nkKostenNetto${suffix}`, eurFmt.format(ergebnis.nachkauf.kostenNetto));
+  zelle(`nkEffSatz${suffix}`, pctFmt.format(ergebnis.nachkauf.effSatz));
+  zelle(`nkRate${suffix}`, eurFmt.format(ergebnis.nachkauf.ratePerJahr));
 }
 
-function rendereDetails(ergebnis) {
-  document.getElementById('dVm').textContent = `${numFmt.format(ergebnis.monate.vm)} Monate`;
-  document.getElementById('dNk').textContent = `${numFmt.format(ergebnis.monate.nkMonate)} Monate`;
-  document.getElementById('dGutschrift').textContent = eurFmt.format(ergebnis.gutschrift);
-  document.getElementById('dAbschlagZuschlag').textContent = ergebnis.ok
+function rendereDetails(suffix, ergebnis) {
+  zelle(`dVm${suffix}`, `${numFmt.format(ergebnis.monate.vm)} Monate`);
+  zelle(`dNk${suffix}`, `${numFmt.format(ergebnis.monate.nkMonate)} Monate`);
+  zelle(`dGutschrift${suffix}`, eurFmt.format(ergebnis.gutschrift));
+  zelle(`dRegelalter${suffix}`, numFmt.format(ergebnis.regelalter));
+  zelle(`dAbschlagZuschlag${suffix}`, ergebnis.ok
     ? (ergebnis.abschlag > 0 ? `- ${pctFmt.format(ergebnis.abschlag)}` : `+ ${pctFmt.format(ergebnis.zuschlag)}`)
-    : '–';
-  document.getElementById('dSvJahr').textContent = eurFmt.format(ergebnis.kapital.svJahr);
-  document.getElementById('dKapitalPuffer').textContent = eurFmt.format(ergebnis.kapital.kapitalPuffer);
+    : '–');
+  zelle(`dSvJahr${suffix}`, eurFmt.format(ergebnis.kapital.svJahr));
+  zelle(`dKapitalPuffer${suffix}`, eurFmt.format(ergebnis.kapital.kapitalPuffer));
+}
+
+function rendereScenario(suffix, ergebnis, lebenshaltung, nachkaufAn) {
+  rendereStatus(suffix, ergebnis);
+  rendereKarten(suffix, ergebnis, lebenshaltung);
+  rendereNachkauf(suffix, ergebnis, nachkaufAn);
+  rendereDetails(suffix, ergebnis);
 }
 
 function rendereChart(eingabenAktuell) {
@@ -355,10 +387,6 @@ function rendereChart(eingabenAktuell) {
   }
 }
 
-function zelle(id, text) {
-  document.getElementById(id).textContent = text;
-}
-
 function diffZelle(id, a, b, fmt) {
   const d = a - b;
   const el = document.getElementById(id);
@@ -371,9 +399,9 @@ function rendereVergleich(ergebnisA, ergebnisB, geburtsdatum) {
   const box = document.getElementById('vergleichBox');
   box.hidden = false;
 
-  const antrittText = (r, alter) => (r.ok ? `${dateFmt.format(r.monate.stichtagPension)} (Alter ${alter})` : 'kein Anspruch');
-  zelle('vAntrittA', antrittText(ergebnisA, eingaben.antrittsalter));
-  zelle('vAntrittB', antrittText(ergebnisB, eingaben.antrittsalterB));
+  const antrittText = (r) => (r.ok ? `${dateFmt.format(r.monate.stichtagPension)} (Alter ${r.eingaben.antrittsalter})` : 'kein Anspruch');
+  zelle('vAntrittA', antrittText(ergebnisA));
+  zelle('vAntrittB', antrittText(ergebnisB));
 
   const gesamtA = ergebnisA.kapital.kapitalPuffer + ergebnisA.nachkauf.kostenNetto;
   const gesamtB = ergebnisB.kapital.kapitalPuffer + ergebnisB.nachkauf.kostenNetto;
@@ -418,6 +446,17 @@ function rendereVergleich(ergebnisA, ergebnisB, geburtsdatum) {
     }
   }
 }
+
+document.getElementById('uebernehmenButton').addEventListener('click', () => {
+  els.lebenshaltungB.value = els.lebenshaltung.value;
+  els.ausstiegsalterB.value = els.ausstiegsalter.value;
+  els.antrittsalterB.min = els.ausstiegsalter.value;
+  els.antrittsalterB.value = els.antrittsalter.value;
+  els.nachkaufAnB.checked = els.nachkaufAn.checked;
+  els.nachkaufJahreB.value = els.nachkaufJahre.value;
+  els.wvAnB.checked = els.wvAn.checked;
+  neuBerechnenUndRendern();
+});
 
 document.getElementById('form').addEventListener('input', neuBerechnenUndRendern);
 document.getElementById('footerJahr').textContent = CONST.JAHR;

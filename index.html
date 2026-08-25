@@ -23,6 +23,19 @@
       </label>
 
       <label class="field">
+        <span>Geschlecht
+          <span class="info-icon" tabindex="0" aria-label="Info: Warum wichtig?">i
+            <span class="info-tooltip">Das gesetzliche Regelpensionsalter für Frauen steigt bis 2033 stufenweise von 60 auf 65 (abhängig vom Geburtsdatum) – das wirkt sich auf Abschlag/Zuschlag und die Korridorpension aus. Genaues Regelpensionsalter im Zweifel bei der PV erfragen.</span>
+          </span>
+        </span>
+        <select id="geschlecht" required>
+          <option value="">– bitte wählen –</option>
+          <option value="mann">Mann</option>
+          <option value="frau">Frau</option>
+        </select>
+      </label>
+
+      <label class="field">
         <span>Pensionskonto-Gutschrift (€)
           <span class="info-icon" tabindex="0" aria-label="Info: Wo finde ich diesen Wert?">i
             <span class="info-tooltip">Auf <strong>neuespensionskonto.at/pensionskonto</strong> mit ID Austria einloggen: Gutschrift und Stichtag stehen auf der Übersicht.</span>
@@ -49,127 +62,216 @@
         <span>Bruttogehalt/Monat, ×14 (€)</span>
         <input type="number" id="gehalt" min="0" step="10" required>
       </label>
+
+      <label class="field">
+        <span>Max. Nachkauf-Monate noch verfügbar
+          <span class="info-icon" tabindex="0" aria-label="Info: Was ist das Maximum?">i
+            <span class="info-tooltip">Gesetzliches Maximum: 108 Monate (36 Monate höhere Schule + 72 Monate/12 Semester Hochschule). Falls schon früher teilweise nachgekauft, hier die noch verbleibende Anzahl eintragen – genaue Zahl bei der PV erfragen.</span>
+          </span>
+        </span>
+        <input type="number" id="nkMaxMonate" min="0" max="108" step="1">
+      </label>
     </fieldset>
 
-    <fieldset class="grid">
-      <legend>Szenario</legend>
-
-      <label class="field slider-field">
-        <span>Lebenshaltung netto/Monat <output id="lebenshaltungOut"></output></span>
-        <input type="range" id="lebenshaltung" min="1000" max="6000" step="100">
-      </label>
-
-      <label class="field slider-field">
-        <span>Ausstiegsalter <output id="ausstiegsalterOut"></output></span>
-        <input type="range" id="ausstiegsalter" min="55" max="68" step="1">
-      </label>
-
-      <label class="field slider-field">
-        <span>Pensionsantrittsalter <output id="antrittsalterOut"></output></span>
-        <input type="range" id="antrittsalter" min="60" max="68" step="1">
-      </label>
-
-      <label class="field toggle-field">
-        <input type="checkbox" id="nachkaufAn">
-        <span>Nachkauf Schul-/Studienzeiten</span>
-      </label>
-
-      <label class="field slider-field" id="nachkaufJahreField">
-        <span>Nachkauf verteilt über <output id="nachkaufJahreOut"></output> Jahre</span>
-        <input type="range" id="nachkaufJahre" min="1" max="10" step="1">
-      </label>
-
-      <label class="field toggle-field">
-        <input type="checkbox" id="wvAn">
-        <span>Mindest-Weiterversicherung in der Lücke</span>
-      </label>
-
+    <div class="vergleich-schalter">
       <label class="field toggle-field">
         <input type="checkbox" id="vergleichAn">
         <span>Zweites Szenario vergleichen</span>
       </label>
-    </fieldset>
+    </div>
 
-    <fieldset class="grid" id="szenarioBFieldset" hidden>
-      <legend>Szenario B</legend>
+    <div class="szenario-spalten">
+      <fieldset class="grid">
+        <legend>Szenario A</legend>
 
-      <label class="field slider-field">
-        <span>Ausstiegsalter B <output id="ausstiegsalterBOut"></output></span>
-        <input type="range" id="ausstiegsalterB" min="55" max="68" step="1">
-      </label>
+        <label class="field slider-field">
+          <span>Lebenshaltung netto/Monat <output id="lebenshaltungOut"></output></span>
+          <input type="range" id="lebenshaltung" min="1000" max="6000" step="100">
+        </label>
 
-      <label class="field slider-field">
-        <span>Pensionsantrittsalter B <output id="antrittsalterBOut"></output></span>
-        <input type="range" id="antrittsalterB" min="60" max="68" step="1">
-      </label>
+        <label class="field slider-field">
+          <span>Ausstiegsalter <output id="ausstiegsalterOut"></output></span>
+          <input type="range" id="ausstiegsalter" min="55" max="68" step="1">
+        </label>
 
-      <label class="field toggle-field">
-        <input type="checkbox" id="nachkaufAnB">
-        <span>Nachkauf Schul-/Studienzeiten (B)</span>
-      </label>
+        <label class="field slider-field">
+          <span>Pensionsantrittsalter <output id="antrittsalterOut"></output></span>
+          <input type="range" id="antrittsalter" min="60" max="68" step="1">
+        </label>
 
-      <label class="field slider-field" id="nachkaufJahreBField">
-        <span>Nachkauf B verteilt über <output id="nachkaufJahreBOut"></output> Jahre</span>
-        <input type="range" id="nachkaufJahreB" min="1" max="10" step="1">
-      </label>
+        <label class="field toggle-field">
+          <input type="checkbox" id="nachkaufAn">
+          <span>Nachkauf Schul-/Studienzeiten</span>
+        </label>
 
-      <label class="field toggle-field">
-        <input type="checkbox" id="wvAnB">
-        <span>Mindest-Weiterversicherung in der Lücke (B)</span>
-      </label>
-    </fieldset>
+        <label class="field slider-field" id="nachkaufJahreField">
+          <span>Nachkauf verteilt über <output id="nachkaufJahreOut"></output> Jahre
+            <span class="info-icon" tabindex="0" aria-label="Info: Voraussetzung und Maximum">i
+              <span class="info-tooltip">Verteilt die Nachkaufkosten steuerlich auf 1–10 Jahre. Voraussetzung: Antrittsalter unter 65. Maximal nachkaufbar sind 108 Monate (36 höhere Schule + 72 Hochschule), begrenzt durch „Max. Nachkauf-Monate noch verfügbar" bei den persönlichen Daten.</span>
+            </span>
+          </span>
+          <input type="range" id="nachkaufJahre" min="1" max="10" step="1">
+        </label>
+
+        <label class="field toggle-field">
+          <input type="checkbox" id="wvAn">
+          <span>Mindest-Weiterversicherung in der Lücke</span>
+        </label>
+      </fieldset>
+
+      <fieldset class="grid" id="szenarioBFieldset" hidden>
+        <legend>Szenario B</legend>
+
+        <button type="button" class="uebernehmen-btn" id="uebernehmenButton">Einstellungen von Szenario A übernehmen</button>
+
+        <label class="field slider-field">
+          <span>Lebenshaltung netto/Monat <output id="lebenshaltungBOut"></output></span>
+          <input type="range" id="lebenshaltungB" min="1000" max="6000" step="100">
+        </label>
+
+        <label class="field slider-field">
+          <span>Ausstiegsalter <output id="ausstiegsalterBOut"></output></span>
+          <input type="range" id="ausstiegsalterB" min="55" max="68" step="1">
+        </label>
+
+        <label class="field slider-field">
+          <span>Pensionsantrittsalter <output id="antrittsalterBOut"></output></span>
+          <input type="range" id="antrittsalterB" min="60" max="68" step="1">
+        </label>
+
+        <label class="field toggle-field">
+          <input type="checkbox" id="nachkaufAnB">
+          <span>Nachkauf Schul-/Studienzeiten</span>
+        </label>
+
+        <label class="field slider-field" id="nachkaufJahreBField">
+          <span>Nachkauf verteilt über <output id="nachkaufJahreBOut"></output> Jahre
+            <span class="info-icon" tabindex="0" aria-label="Info: Voraussetzung und Maximum">i
+              <span class="info-tooltip">Verteilt die Nachkaufkosten steuerlich auf 1–10 Jahre. Voraussetzung: Antrittsalter unter 65. Maximal nachkaufbar sind 108 Monate (36 höhere Schule + 72 Hochschule), begrenzt durch „Max. Nachkauf-Monate noch verfügbar" bei den persönlichen Daten.</span>
+            </span>
+          </span>
+          <input type="range" id="nachkaufJahreB" min="1" max="10" step="1">
+        </label>
+
+        <label class="field toggle-field">
+          <input type="checkbox" id="wvAnB">
+          <span>Mindest-Weiterversicherung in der Lücke</span>
+        </label>
+      </fieldset>
+    </div>
   </form>
 
-  <section id="statusline" class="statusline" role="status"></section>
+  <div class="ergebnis-spalten">
+    <section class="box ergebnis-kachel" id="ergebnisBoxA">
+      <h2 class="kachel-titel">Szenario A</h2>
+      <div class="statusline" id="statuslineA" role="status"></div>
 
-  <section class="cards" aria-label="Kennzahlen">
-    <div class="card">
-      <h2>Pension brutto <small>(×14)</small></h2>
-      <p class="card-value" id="cardBrutto">–</p>
-    </div>
-    <div class="card">
-      <h2>Pension netto <small>ca.</small></h2>
-      <p class="card-value" id="cardNetto">–</p>
-    </div>
-    <div class="card">
-      <h2>Differenz zur Lebenshaltung</h2>
-      <p class="card-value" id="cardDifferenz">–</p>
-    </div>
-    <div class="card">
-      <h2>Kapitalbedarf am Ausstieg</h2>
-      <p class="card-value" id="cardKapital">–</p>
-    </div>
-  </section>
+      <div class="cards" aria-label="Kennzahlen Szenario A">
+        <div class="card">
+          <h3>Pension brutto <small>(×14)</small></h3>
+          <p class="card-value" id="cardBruttoA">–</p>
+        </div>
+        <div class="card">
+          <h3>Pension netto <small>ca.</small></h3>
+          <p class="card-value" id="cardNettoA">–</p>
+        </div>
+        <div class="card">
+          <h3>Differenz zur Lebenshaltung</h3>
+          <p class="card-value" id="cardDifferenzA">–</p>
+        </div>
+        <div class="card">
+          <h3>Kapitalbedarf am Ausstieg</h3>
+          <p class="card-value" id="cardKapitalA">–</p>
+        </div>
+      </div>
 
-  <section class="box" id="nachkaufBox" hidden>
-    <h2>Nachkauf: Kosten &amp; Steuereffekt</h2>
-    <dl class="kv-list">
-      <div><dt>Gekaufte Monate</dt><dd id="nkMonate">–</dd></div>
-      <div><dt>Kosten voll</dt><dd id="nkKostenVoll">–</dd></div>
-      <div><dt>Steuerersparnis</dt><dd id="nkErsparnis" class="positive">–</dd></div>
-      <div><dt>Kosten nach Steuer</dt><dd id="nkKostenNetto">–</dd></div>
-      <div><dt>Effektiver Satz</dt><dd id="nkEffSatz">–</dd></div>
-      <div><dt>Rate pro Jahr</dt><dd id="nkRate">–</dd></div>
-    </dl>
-    <p class="hint">Der Sonderausgabenabzug greift im Jahr der Zahlung. Gestaffelte Teilanträge bzw. Ratenzahlung vorab mit der PV klären.</p>
-  </section>
+      <div class="sub-box" id="nachkaufBoxA" hidden>
+        <h3>Nachkauf: Kosten &amp; Steuereffekt</h3>
+        <dl class="kv-list">
+          <div><dt>Gekaufte Monate</dt><dd id="nkMonateA">–</dd></div>
+          <div><dt>Kosten voll</dt><dd id="nkKostenVollA">–</dd></div>
+          <div><dt>Steuerersparnis</dt><dd id="nkErsparnisA" class="positive">–</dd></div>
+          <div><dt>Kosten nach Steuer</dt><dd id="nkKostenNettoA">–</dd></div>
+          <div><dt>Effektiver Satz</dt><dd id="nkEffSatzA">–</dd></div>
+          <div><dt>Rate pro Jahr</dt><dd id="nkRateA">–</dd></div>
+        </dl>
+        <p class="hint">Der Sonderausgabenabzug greift im Jahr der Zahlung. Gestaffelte Teilanträge bzw. Ratenzahlung vorab mit der PV klären.</p>
+      </div>
 
-  <section class="box">
-    <h2>Details</h2>
-    <div class="table-scroll">
-      <table id="detailTable">
-        <tbody>
-          <tr><th>Versicherungsmonate am Stichtag</th><td id="dVm">–</td></tr>
-          <tr><th>davon Nachkaufmonate</th><td id="dNk">–</td></tr>
-          <tr><th>Gutschrift bei Antritt</th><td id="dGutschrift">–</td></tr>
-          <tr><th>Abschlag / Zuschlag</th><td id="dAbschlagZuschlag">–</td></tr>
-          <tr><th>SV-Kosten pro Lückenjahr</th><td id="dSvJahr">–</td></tr>
-          <tr><th>Kapitalbedarf inkl. Puffer (+15 %)</th><td id="dKapitalPuffer">–</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="hint">Nachkaufkosten sind im Kapitalbedarf <strong>nicht</strong> enthalten – sie sollten idealerweise vor dem Ausstieg aus laufendem Einkommen finanziert werden.</p>
-  </section>
+      <div class="sub-box">
+        <h3>Details</h3>
+        <div class="table-scroll">
+          <table>
+            <tbody>
+              <tr><th>Versicherungsmonate am Stichtag</th><td id="dVmA">–</td></tr>
+              <tr><th>davon Nachkaufmonate</th><td id="dNkA">–</td></tr>
+              <tr><th>Gutschrift bei Antritt</th><td id="dGutschriftA">–</td></tr>
+              <tr><th>Regelpensionsalter</th><td id="dRegelalterA">–</td></tr>
+              <tr><th>Abschlag / Zuschlag</th><td id="dAbschlagZuschlagA">–</td></tr>
+              <tr><th>SV-Kosten pro Lückenjahr</th><td id="dSvJahrA">–</td></tr>
+              <tr><th>Kapitalbedarf inkl. Puffer (+15 %)</th><td id="dKapitalPufferA">–</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="hint">Nachkaufkosten sind im Kapitalbedarf <strong>nicht</strong> enthalten – sie sollten idealerweise vor dem Ausstieg aus laufendem Einkommen finanziert werden.</p>
+      </div>
+    </section>
+
+    <section class="box ergebnis-kachel" id="ergebnisBoxB" hidden>
+      <h2 class="kachel-titel">Szenario B</h2>
+      <div class="statusline" id="statuslineB" role="status"></div>
+
+      <div class="cards" aria-label="Kennzahlen Szenario B">
+        <div class="card">
+          <h3>Pension brutto <small>(×14)</small></h3>
+          <p class="card-value" id="cardBruttoB">–</p>
+        </div>
+        <div class="card">
+          <h3>Pension netto <small>ca.</small></h3>
+          <p class="card-value" id="cardNettoB">–</p>
+        </div>
+        <div class="card">
+          <h3>Differenz zur Lebenshaltung</h3>
+          <p class="card-value" id="cardDifferenzB">–</p>
+        </div>
+        <div class="card">
+          <h3>Kapitalbedarf am Ausstieg</h3>
+          <p class="card-value" id="cardKapitalB">–</p>
+        </div>
+      </div>
+
+      <div class="sub-box" id="nachkaufBoxB" hidden>
+        <h3>Nachkauf: Kosten &amp; Steuereffekt</h3>
+        <dl class="kv-list">
+          <div><dt>Gekaufte Monate</dt><dd id="nkMonateB">–</dd></div>
+          <div><dt>Kosten voll</dt><dd id="nkKostenVollB">–</dd></div>
+          <div><dt>Steuerersparnis</dt><dd id="nkErsparnisB" class="positive">–</dd></div>
+          <div><dt>Kosten nach Steuer</dt><dd id="nkKostenNettoB">–</dd></div>
+          <div><dt>Effektiver Satz</dt><dd id="nkEffSatzB">–</dd></div>
+          <div><dt>Rate pro Jahr</dt><dd id="nkRateB">–</dd></div>
+        </dl>
+        <p class="hint">Der Sonderausgabenabzug greift im Jahr der Zahlung. Gestaffelte Teilanträge bzw. Ratenzahlung vorab mit der PV klären.</p>
+      </div>
+
+      <div class="sub-box">
+        <h3>Details</h3>
+        <div class="table-scroll">
+          <table>
+            <tbody>
+              <tr><th>Versicherungsmonate am Stichtag</th><td id="dVmB">–</td></tr>
+              <tr><th>davon Nachkaufmonate</th><td id="dNkB">–</td></tr>
+              <tr><th>Gutschrift bei Antritt</th><td id="dGutschriftB">–</td></tr>
+              <tr><th>Regelpensionsalter</th><td id="dRegelalterB">–</td></tr>
+              <tr><th>Abschlag / Zuschlag</th><td id="dAbschlagZuschlagB">–</td></tr>
+              <tr><th>SV-Kosten pro Lückenjahr</th><td id="dSvJahrB">–</td></tr>
+              <tr><th>Kapitalbedarf inkl. Puffer (+15 %)</th><td id="dKapitalPufferB">–</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="hint">Nachkaufkosten sind im Kapitalbedarf <strong>nicht</strong> enthalten – sie sollten idealerweise vor dem Ausstieg aus laufendem Einkommen finanziert werden.</p>
+      </div>
+    </section>
+  </div>
 
   <section class="box" id="vergleichBox" hidden>
     <h2>Vergleich Szenario A / B</h2>
@@ -193,7 +295,7 @@
   </section>
 
   <section class="box">
-    <h2>Vergleich nach Antrittsalter</h2>
+    <h2>Vergleich nach Antrittsalter (Szenario A)</h2>
     <div id="chart" class="chart" aria-label="Balkendiagramm Pension brutto nach Antrittsalter"></div>
   </section>
 </main>

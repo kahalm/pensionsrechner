@@ -101,6 +101,20 @@ legend {
   .grid { grid-template-columns: 1fr 1fr; }
 }
 
+@media (min-width: 900px) {
+  main { max-width: 1100px; }
+  .szenario-spalten.zwei-spalten {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    align-items: start;
+  }
+  .szenario-spalten.zwei-spalten fieldset.grid {
+    grid-template-columns: 1fr;
+    margin-bottom: 0;
+  }
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -113,7 +127,8 @@ legend {
 }
 
 input[type="date"],
-input[type="number"] {
+input[type="number"],
+select {
   background: var(--input-bg);
   color: var(--text);
   border: 1px solid var(--border);
@@ -121,6 +136,34 @@ input[type="number"] {
   padding: 0.5rem 0.6rem;
   font-size: 1rem;
   width: 100%;
+}
+
+.vergleich-schalter {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow);
+}
+
+.uebernehmen-btn {
+  grid-column: 1 / -1;
+  display: block;
+  width: 100%;
+  margin-bottom: 0.9rem;
+  padding: 0.5rem 0.8rem;
+  background: var(--accent);
+  color: var(--bg-elevated);
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.uebernehmen-btn:hover {
+  opacity: 0.9;
 }
 
 input[type="range"] {
@@ -236,7 +279,8 @@ output {
   box-shadow: var(--shadow);
 }
 
-.card h2 {
+.card h2,
+.card h3 {
   margin: 0 0 0.35rem;
   font-size: 0.8rem;
   font-weight: 600;
@@ -245,7 +289,8 @@ output {
   letter-spacing: 0.02em;
 }
 
-.card h2 small {
+.card h2 small,
+.card h3 small {
   text-transform: none;
   font-weight: 400;
 }
@@ -271,6 +316,43 @@ output {
 .box h2 {
   margin: 0 0 0.6rem;
   font-size: 1rem;
+}
+
+.ergebnis-spalten {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ergebnis-kachel {
+  margin-bottom: 0;
+}
+
+.kachel-titel {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+
+.sub-box {
+  border-top: 1px solid var(--border);
+  padding-top: 0.9rem;
+  margin-top: 0.9rem;
+}
+
+.sub-box h3 {
+  margin: 0 0 0.6rem;
+  font-size: 0.95rem;
+}
+
+@media (min-width: 900px) {
+  .ergebnis-spalten {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  .ergebnis-spalten .ergebnis-kachel {
+    flex: 1 1 0;
+    min-width: 0;
+  }
 }
 
 .kv-list {

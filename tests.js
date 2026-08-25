@@ -2,12 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CONST, tarif, monateZwischen, stichtagPension, ausstiegsdatum,
-  berechnePensionsszenario, addMonths, breakEvenPunkt,
+  berechnePensionsszenario, addMonths, breakEvenPunkt, regelpensionsalter,
 } from './pension.js';
 
 // Referenzperson: geb. 24.02.1983, Konto 22.812 € per 01.01.2026, 203 VM per Stichtag,
 // Einkommen über HBGL, durchgehend versichert (Ausstieg = Antritt).
 const basis = {
+  geschlecht: 'mann',
   geburtsdatum: '1983-02-24',
   konto: 22812,
   kontoStichtag: '2026-01-01',
@@ -132,6 +133,44 @@ test('Nachkauf-Steuereffekt: Ersparnis liegt zwischen 0 und den vollen Kosten', 
   assert.ok(r.nachkauf.ersparnis > 0);
   assert.ok(r.nachkauf.ersparnis < r.nachkauf.kostenVoll);
   assert.ok(Math.abs(r.nachkauf.ratePerJahr - r.nachkauf.kostenVoll / 5) < 1e-9);
+});
+
+test('regelpensionsalter: Männer immer 65, unabhängig vom Geburtsdatum', () => {
+  assert.equal(regelpensionsalter('mann', '1965-01-01'), 65);
+  assert.equal(regelpensionsalter('mann', '2000-01-01'), 65);
+});
+
+test('regelpensionsalter: Frauen-Übergangsjahrgänge laut Stufenplan', () => {
+  assert.equal(regelpensionsalter('frau', '1962-01-01'), 60);
+  assert.equal(regelpensionsalter('frau', '1965-01-01'), 62);
+  assert.equal(regelpensionsalter('frau', '1970-01-01'), 65);
+});
+
+test('Frau mit Regelpensionsalter 62: voller Anspruch (0 Abschlag) genau am eigenen Regelalter', () => {
+  const r = berechnePensionsszenario({
+    ...basis, geschlecht: 'frau', geburtsdatum: '1965-01-01', ausstiegsalter: 62, antrittsalter: 62,
+  });
+  assert.ok(r.ok);
+  assert.equal(r.regelalter, 62);
+  assert.equal(r.abschlag, 0);
+  assert.equal(r.zuschlag, 0);
+});
+
+test('Frau mit Regelpensionsalter 62: 2 Jahre früher (60) unterhalb Korridor-Untergrenze -> kein Anspruch', () => {
+  const r = berechnePensionsszenario({
+    ...basis, geschlecht: 'frau', geburtsdatum: '1965-01-01', ausstiegsalter: 60, antrittsalter: 60,
+  });
+  assert.equal(r.ok, false);
+  assert.equal(r.fehlercode, 'ZU_FRUEH');
+});
+
+test('Frau mit Regelpensionsalter 64: Korridorpension mit 1 Jahr Abschlag bei Antritt 63', () => {
+  const r = berechnePensionsszenario({
+    ...basis, geschlecht: 'frau', geburtsdatum: '1967-03-01', vmStart: 500, ausstiegsalter: 63, antrittsalter: 63, nachkaufAn: false,
+  });
+  assert.equal(r.regelalter, 64);
+  assert.ok(r.ok, `erwartete Anspruch, vm=${r.monate.vm}`);
+  assert.ok(Math.abs(r.abschlag - 0.051) < 1e-9);
 });
 
 test('addMonths: addiert Kalendermonate', () => {

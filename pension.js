@@ -80,16 +80,42 @@ export function jahresgutschrift(gehalt) {
   return CONST.KONTOPROZENTSATZ * Math.min(gehalt * 14, CONST.HBGL_JAHR);
 }
 
+// Stufenweise Anhebung des Frauen-Regelpensionsalters 2024–2033 (von 60 auf 65,
+// abhängig vom Geburtsdatum; danach gleich wie Männer). Randfälle exakt am
+// Stichtag: im Zweifel bei der PV die genaue Zahl erfragen.
+const FRAUEN_STUFEN = [
+  { bis: '1963-06-01', alter: 60 },
+  { bis: '1963-12-01', alter: 60.5 },
+  { bis: '1964-06-01', alter: 61 },
+  { bis: '1964-12-01', alter: 61.5 },
+  { bis: '1965-06-01', alter: 62 },
+  { bis: '1965-12-01', alter: 62.5 },
+  { bis: '1966-06-01', alter: 63 },
+  { bis: '1966-12-01', alter: 63.5 },
+  { bis: '1967-06-01', alter: 64 },
+  { bis: '1967-12-01', alter: 64.5 },
+];
+
+export function regelpensionsalter(geschlecht, geburtsdatum) {
+  if (geschlecht !== 'frau') return CONST.REGELPENSIONSALTER;
+  const g = toDate(geburtsdatum);
+  for (const stufe of FRAUEN_STUFEN) {
+    if (g <= toDate(stufe.bis)) return stufe.alter;
+  }
+  return CONST.REGELPENSIONSALTER;
+}
+
 export function versicherungsmonate({
   geburtsdatum, kontoStichtag, vmStart, antrittsalter, ausstiegsalter, nachkaufAn, wvAn,
+  nkMaxMonate = CONST.NK_MAX_MONATE, regelalter = CONST.REGELPENSIONSALTER,
 }) {
   const ausstieg = ausstiegsdatum(geburtsdatum, ausstiegsalter);
   const stichtagP = stichtagPension(geburtsdatum, antrittsalter);
   const arbeitsmonate = Math.max(0, monateZwischen(kontoStichtag, ausstieg));
   const lueckenmonate = Math.max(0, monateZwischen(ausstieg, stichtagP));
   const vmOhneNachkauf = vmStart + arbeitsmonate + (wvAn ? lueckenmonate : 0);
-  const nkMonate = (nachkaufAn && antrittsalter < CONST.REGELPENSIONSALTER)
-    ? clamp(CONST.KORRIDOR_MONATE - vmOhneNachkauf, 0, CONST.NK_MAX_MONATE)
+  const nkMonate = (nachkaufAn && antrittsalter < regelalter)
+    ? clamp(CONST.KORRIDOR_MONATE - vmOhneNachkauf, 0, clamp(nkMaxMonate, 0, CONST.NK_MAX_MONATE))
     : 0;
   return {
     ausstieg,
@@ -114,13 +140,21 @@ export function gutschriftBeiAntritt({
   return g;
 }
 
-export function anspruchUndBrutto({ antrittsalter, vm, gutschrift }) {
-  if (antrittsalter < CONST.KORRIDOR_ALTER) {
-    return {
-      ok: false, fehlercode: 'ZU_FRUEH', fehlendeMonate: null, abschlag: null, zuschlag: null, bruttoMonat: null,
-    };
-  }
-  if (antrittsalter < CONST.REGELPENSIONSALTER) {
+// Abschlag/Zuschlag sind immer relativ zum PERSÖNLICHEN Regelpensionsalter (bei
+// Männern und Frauen ab Jahrgang 1968 fix 65; bei Frauen in der Übergangszeit
+// niedriger, siehe regelpensionsalter()). Die Korridorpension als eigenständiges
+// Frühpensions-Instrument (504 Monate, Abschlag) hat unabhängig davon ihre eigene
+// Alters-Untergrenze KORRIDOR_ALTER: unterhalb dieser Grenze besteht so oder so
+// kein Anspruch, auch wenn das persönliche Regelpensionsalter niedriger liegt.
+export function anspruchUndBrutto({
+  antrittsalter, vm, gutschrift, regelalter = CONST.REGELPENSIONSALTER,
+}) {
+  if (antrittsalter < regelalter) {
+    if (antrittsalter < CONST.KORRIDOR_ALTER) {
+      return {
+        ok: false, fehlercode: 'ZU_FRUEH', fehlendeMonate: null, abschlag: null, zuschlag: null, bruttoMonat: null,
+      };
+    }
     if (vm < CONST.KORRIDOR_MONATE) {
       return {
         ok: false,
@@ -131,12 +165,12 @@ export function anspruchUndBrutto({ antrittsalter, vm, gutschrift }) {
         bruttoMonat: null,
       };
     }
-    const abschlag = (CONST.REGELPENSIONSALTER - antrittsalter) * CONST.ABSCHLAG_PA;
+    const abschlag = (regelalter - antrittsalter) * CONST.ABSCHLAG_PA;
     return {
       ok: true, fehlercode: null, fehlendeMonate: 0, abschlag, zuschlag: 0, bruttoMonat: (gutschrift / 14) * (1 - abschlag),
     };
   }
-  const zuschlag = Math.min((antrittsalter - CONST.REGELPENSIONSALTER) * CONST.ZUSCHLAG_PA, CONST.ZUSCHLAG_MAX);
+  const zuschlag = Math.min((antrittsalter - regelalter) * CONST.ZUSCHLAG_PA, CONST.ZUSCHLAG_MAX);
   return {
     ok: true, fehlercode: null, fehlendeMonate: 0, abschlag: 0, zuschlag, bruttoMonat: (gutschrift / 14) * (1 + zuschlag),
   };
@@ -197,7 +231,8 @@ function ampelFuer(anspruch, monate) {
 
 export function berechnePensionsszenario(eingaben) {
   const antrittsalter = Math.max(eingaben.antrittsalter, eingaben.ausstiegsalter);
-  const monate = versicherungsmonate({ ...eingaben, antrittsalter });
+  const regelalter = regelpensionsalter(eingaben.geschlecht, eingaben.geburtsdatum);
+  const monate = versicherungsmonate({ ...eingaben, antrittsalter, regelalter });
   const gutschrift = gutschriftBeiAntritt({
     konto: eingaben.konto,
     gehalt: eingaben.gehalt,
@@ -206,7 +241,9 @@ export function berechnePensionsszenario(eingaben) {
     wvAn: eingaben.wvAn,
     nkMonate: monate.nkMonate,
   });
-  const anspruch = anspruchUndBrutto({ antrittsalter, vm: monate.vm, gutschrift });
+  const anspruch = anspruchUndBrutto({
+    antrittsalter, vm: monate.vm, gutschrift, regelalter,
+  });
   const netto = anspruch.ok ? nettoMonat(anspruch.bruttoMonat) : null;
   const nachkauf = nachkaufSteuereffekt({
     nkMonate: monate.nkMonate, gehalt: eingaben.gehalt, nachkaufJahre: eingaben.nachkaufJahre,
@@ -217,6 +254,7 @@ export function berechnePensionsszenario(eingaben) {
 
   return {
     eingaben: { ...eingaben, antrittsalter },
+    regelalter,
     monate,
     gutschrift,
     ok: anspruch.ok,
