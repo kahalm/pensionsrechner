@@ -41,6 +41,12 @@ export const CONST = {
 
   // Alternative "ETF statt Nachkauf": ca. 7 % Bruttorendite p.a. minus 27,5 % KESt.
   ETF_RENDITE_NETTO: 0.05,
+
+  // Für die Amortisationsrechnungen: konservative reale Nettorendite (nach Steuer
+  // und Inflation) als Alternativrendite-Benchmark, plus die Annahmen dahinter.
+  AMORTISATION_RENDITE_REAL: 0.02,
+  INFLATION_ANNAHME: 0.02,
+  KEST: 0.275,
 };
 
 CONST.NK_GUTSCHRIFT_MONAT = (CONST.NK_KOSTEN_MONAT / CONST.WV_SATZ) * CONST.KONTOPROZENTSATZ;
@@ -237,6 +243,40 @@ function ampelFuer(anspruch, monate) {
   return 'gruen';
 }
 
+// Faustregel-Amortisation für den Kauf von genau 1 Nachkauf-Monat (unabhängig von der
+// tatsächlich gewählten Anzahl): einfache Version (Kosten ÷ Zusatzpension) und eine
+// Version, die die Kosten bis zum Antritt mit AMORTISATION_RENDITE_REAL verzinst
+// (Opportunitätskosten einer Alternativanlage).
+export function amortisationEinMonat({
+  abschlag, zuschlag, jahreBisAntritt, ok,
+}) {
+  if (!ok) return null;
+  const kosten = CONST.NK_KOSTEN_MONAT;
+  const faktor = abschlag > 0 ? (1 - abschlag) : (1 + zuschlag);
+  const zusatzBruttoProMonat = (CONST.NK_GUTSCHRIFT_MONAT / 14) * faktor;
+  const jahreEinfach = kosten / zusatzBruttoProMonat / 12;
+  const jbA = Math.max(0, jahreBisAntritt);
+  const kostenBeiAntritt = kosten * (1 + CONST.AMORTISATION_RENDITE_REAL) ** jbA;
+  const jahreVsAlternative = jbA + (kostenBeiAntritt / zusatzBruttoProMonat) / 12;
+  return {
+    kosten, zusatzBruttoProMonat, jahreEinfach, jahreVsAlternative,
+  };
+}
+
+// Amortisation der freiwilligen PV-Weiterversicherung: lohnt sich 1 Jahr Beitrag bei
+// gegebener Beitragsgrundlage (Minimum oder aktuelles Gehalt, gedeckelt) überhaupt?
+export function wvAmortisation(basis, { abschlag, zuschlag, ok }) {
+  if (!ok) return null;
+  const beitragProJahr = basis * CONST.WV_SATZ * 12;
+  const gutschriftProJahr = CONST.KONTOPROZENTSATZ * basis * 12;
+  const faktor = abschlag > 0 ? (1 - abschlag) : (1 + zuschlag);
+  const zusatzBruttoProMonat = (gutschriftProJahr / 14) * faktor;
+  const jahreEinfach = beitragProJahr / zusatzBruttoProMonat / 12;
+  return {
+    basis, beitragProJahr, zusatzBruttoProMonat, jahreEinfach,
+  };
+}
+
 export function berechnePensionsszenario(eingaben) {
   const antrittsalter = Math.max(eingaben.antrittsalter, eingaben.ausstiegsalter);
   const regelalter = regelpensionsalter(eingaben.geschlecht, eingaben.geburtsdatum);
@@ -260,6 +300,13 @@ export function berechnePensionsszenario(eingaben) {
   const kapital = kapitalbedarf({
     lueckenmonate: monate.lueckenmonate, lebenshaltung: eingaben.lebenshaltung, wvAn: eingaben.wvAn,
   });
+  const amortisation = amortisationEinMonat({
+    abschlag: anspruch.abschlag, zuschlag: anspruch.zuschlag, jahreBisAntritt, ok: anspruch.ok,
+  });
+  const wvVergleich = {
+    minimum: wvAmortisation(CONST.WV_BG_MIN, { abschlag: anspruch.abschlag, zuschlag: anspruch.zuschlag, ok: anspruch.ok }),
+    aktuell: wvAmortisation(Math.min(eingaben.gehalt, CONST.WV_BG_MAX), { abschlag: anspruch.abschlag, zuschlag: anspruch.zuschlag, ok: anspruch.ok }),
+  };
 
   return {
     eingaben: { ...eingaben, antrittsalter },
@@ -275,6 +322,8 @@ export function berechnePensionsszenario(eingaben) {
     nettoMonat: netto,
     nachkauf,
     kapital,
+    amortisation,
+    wvVergleich,
     ampel: ampelFuer(anspruch, monate),
   };
 }
