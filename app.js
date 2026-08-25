@@ -20,6 +20,7 @@ const DEFAULTS = {
   nachkaufJahre: 5,
   wvAn: true,
   vergleichAn: false,
+  nachkaufAlsEtf: false,
   lebenshaltungB: 2000,
   ausstiegsalterB: 65,
   antrittsalterB: 65,
@@ -47,6 +48,7 @@ const PARAM_KEYS = {
   nachkaufJahre: 'nj',
   wvAn: 'wv',
   vergleichAn: 'vgl',
+  nachkaufAlsEtf: 'nketf',
   lebenshaltungB: 'lhB',
   ausstiegsalterB: 'aaB',
   antrittsalterB: 'paB',
@@ -55,7 +57,7 @@ const PARAM_KEYS = {
   wvAnB: 'wvB',
 };
 
-const BOOL_KEYS = new Set(['wvAn', 'vergleichAn', 'wvAnB']);
+const BOOL_KEYS = new Set(['wvAn', 'vergleichAn', 'wvAnB', 'nachkaufAlsEtf']);
 const STORAGE_KEY = 'pensionsrechner:eingaben';
 
 const eurFmt = new Intl.NumberFormat('de-AT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
@@ -124,6 +126,7 @@ const els = {
   nachkaufJahre: document.getElementById('nachkaufJahre'),
   wvAn: document.getElementById('wvAn'),
   vergleichAn: document.getElementById('vergleichAn'),
+  nachkaufAlsEtf: document.getElementById('nachkaufAlsEtf'),
   lebenshaltungB: document.getElementById('lebenshaltungB'),
   ausstiegsalterB: document.getElementById('ausstiegsalterB'),
   antrittsalterB: document.getElementById('antrittsalterB'),
@@ -164,6 +167,7 @@ function eingabenInFormular() {
   els.nachkaufJahre.value = eingaben.nachkaufJahre;
   els.wvAn.checked = eingaben.wvAn;
   els.vergleichAn.checked = eingaben.vergleichAn;
+  els.nachkaufAlsEtf.checked = eingaben.nachkaufAlsEtf;
   els.lebenshaltungB.value = eingaben.lebenshaltungB;
   els.ausstiegsalterB.value = eingaben.ausstiegsalterB;
   els.antrittsalterB.min = eingaben.ausstiegsalterB;
@@ -214,6 +218,7 @@ function ausFormularLesen() {
     nachkaufJahre: Number(els.nachkaufJahre.value),
     wvAn: els.wvAn.checked,
     vergleichAn: els.vergleichAn.checked,
+    nachkaufAlsEtf: els.nachkaufAlsEtf.checked,
     lebenshaltungB: Number(els.lebenshaltungB.value),
     ausstiegsalterB: Number(els.ausstiegsalterB.value),
     antrittsalterB: Math.max(Number(els.antrittsalterB.value), Number(els.ausstiegsalterB.value)),
@@ -414,16 +419,21 @@ function rendereVergleich(ergebnisA, ergebnisB, geburtsdatum) {
   zelle('vAntrittA', antrittText(ergebnisA));
   zelle('vAntrittB', antrittText(ergebnisB));
 
-  const gesamtA = ergebnisA.kapital.kapitalPuffer + ergebnisA.nachkauf.kostenNetto;
-  const gesamtB = ergebnisB.kapital.kapitalPuffer + ergebnisB.nachkauf.kostenNetto;
+  const alsEtf = els.nachkaufAlsEtf.checked;
+  document.getElementById('vNachkaufLabel').textContent = alsEtf ? 'Kosten Nachkauf (ETF-Wert bei Antritt)' : 'Kosten Nachkauf (netto)';
+  const nkWertA = alsEtf ? ergebnisA.nachkauf.etfWert : ergebnisA.nachkauf.kostenNetto;
+  const nkWertB = alsEtf ? ergebnisB.nachkauf.etfWert : ergebnisB.nachkauf.kostenNetto;
+
+  const gesamtA = ergebnisA.kapital.kapitalPuffer + nkWertA;
+  const gesamtB = ergebnisB.kapital.kapitalPuffer + nkWertB;
 
   zelle('vKapitalA', eurFmt.format(ergebnisA.kapital.kapitalPuffer));
   zelle('vKapitalB', eurFmt.format(ergebnisB.kapital.kapitalPuffer));
   diffZelle('vKapitalDiff', ergebnisA.kapital.kapitalPuffer, ergebnisB.kapital.kapitalPuffer, eurFmt);
 
-  zelle('vNachkaufA', eurFmt.format(ergebnisA.nachkauf.kostenNetto));
-  zelle('vNachkaufB', eurFmt.format(ergebnisB.nachkauf.kostenNetto));
-  diffZelle('vNachkaufDiff', ergebnisA.nachkauf.kostenNetto, ergebnisB.nachkauf.kostenNetto, eurFmt);
+  zelle('vNachkaufA', eurFmt.format(nkWertA));
+  zelle('vNachkaufB', eurFmt.format(nkWertB));
+  diffZelle('vNachkaufDiff', nkWertA, nkWertB, eurFmt);
 
   zelle('vGesamtA', eurFmt.format(gesamtA));
   zelle('vGesamtB', eurFmt.format(gesamtB));
@@ -443,7 +453,9 @@ function rendereVergleich(ergebnisA, ergebnisB, geburtsdatum) {
   if (!ergebnisA.ok || !ergebnisB.ok) {
     text.textContent = 'Break-even nicht berechenbar: mindestens ein Szenario hat keinen Anspruch.';
   } else {
-    const be = breakEvenPunkt({ geburtsdatum, ergebnisA, ergebnisB });
+    const be = breakEvenPunkt({
+      geburtsdatum, ergebnisA, ergebnisB, nachkaufKostenA: nkWertA, nachkaufKostenB: nkWertB,
+    });
     if (be.gefunden) {
       const datum = addMonths(geburtsdatum, be.alterMonate);
       const jahre = Math.floor(be.alterMonate / 12);
@@ -457,6 +469,8 @@ function rendereVergleich(ergebnisA, ergebnisB, geburtsdatum) {
     }
   }
 }
+
+els.nachkaufAlsEtf.addEventListener('change', neuBerechnenUndRendern);
 
 document.getElementById('uebernehmenButtonB').addEventListener('click', () => {
   els.lebenshaltungB.value = els.lebenshaltung.value;
@@ -609,6 +623,10 @@ const INFO_TEXTE = {
     immer mit, da in Österreich generell Versicherungspflicht besteht – die App rechnet sie deshalb im
     Kapitalbedarf immer mit ein, unabhängig von diesem Schalter.
     <a href="https://www.pensionsversicherung.at" target="_blank" rel="noopener">Zur Pensionsversicherung →</a>`,
+  nachkaufAlsEtf: `Standardmäßig fließen hier die <strong>Netto-Nachkaufkosten</strong> (nach Steuerersparnis) in
+    "Gesamtkosten" und den Break-even ein. Aktiviert, wird stattdessen der <strong>ETF-Wert bei Antritt</strong>
+    verwendet (die Nettokosten, angenommen zu 5% p.a. netto verzinst statt an die PV gezahlt) – das macht den
+    Vergleich fairer, wenn du die Opportunitätskosten des Nachkaufs (entgangene Anlage) mit einrechnen willst.`,
 };
 
 const infoDialog = document.getElementById('infoDialog');

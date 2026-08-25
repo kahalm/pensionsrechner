@@ -275,6 +275,14 @@
 
   <section class="box" id="vergleichBox" hidden>
     <h2>Vergleich Szenario A / B</h2>
+
+    <label class="field toggle-field">
+      <input type="checkbox" id="nachkaufAlsEtf">
+      <span>Nachkaufkosten hier als ETF-Wert statt Netto-Kosten einrechnen
+        <button type="button" class="info-icon" data-info="nachkaufAlsEtf" aria-label="Info">i</button>
+      </span>
+    </label>
+
     <div class="table-scroll">
       <table id="vergleichTable">
         <thead>
@@ -283,7 +291,7 @@
         <tbody>
           <tr><th>Antritt</th><td id="vAntrittA">–</td><td id="vAntrittB">–</td><td>–</td></tr>
           <tr><th>Kosten bei Ausstieg</th><td id="vKapitalA">–</td><td id="vKapitalB">–</td><td id="vKapitalDiff">–</td></tr>
-          <tr><th>Kosten Nachkauf (netto)</th><td id="vNachkaufA">–</td><td id="vNachkaufB">–</td><td id="vNachkaufDiff">–</td></tr>
+          <tr><th id="vNachkaufLabel">Kosten Nachkauf (netto)</th><td id="vNachkaufA">–</td><td id="vNachkaufB">–</td><td id="vNachkaufDiff">–</td></tr>
           <tr><th>Gesamtkosten bis Antritt</th><td id="vGesamtA">–</td><td id="vGesamtB">–</td><td id="vGesamtDiff">–</td></tr>
           <tr><th>Pension brutto/Monat</th><td id="vBruttoA">–</td><td id="vBruttoB">–</td><td id="vBruttoDiff">–</td></tr>
           <tr><th>Pension netto/Monat</th><td id="vNettoA">–</td><td id="vNettoB">–</td><td id="vNettoDiff">–</td></tr>

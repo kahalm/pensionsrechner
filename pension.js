@@ -291,11 +291,11 @@ export function addMonths(datum, monate) {
   return new Date(d.getFullYear(), d.getMonth() + monate, d.getDate());
 }
 
-function szenarioSegment(ergebnis, geburtsdatum) {
+function szenarioSegment(ergebnis, geburtsdatum, nachkaufKosten) {
   return {
     ausstiegM: monateZwischen(geburtsdatum, ergebnis.monate.ausstieg),
     antrittM: monateZwischen(geburtsdatum, ergebnis.monate.stichtagPension),
-    kosten: ergebnis.kapital.kapitalPuffer + ergebnis.nachkauf.kostenNetto,
+    kosten: ergebnis.kapital.kapitalPuffer + nachkaufKosten,
     pensionProMonat: ergebnis.nettoMonat,
   };
 }
@@ -312,10 +312,14 @@ function segmentWert(segment, alterMonate) {
 // Szenario mit höheren Anfangskosten (Kapitalbedarf + Nachkauf-Kosten netto) durch die
 // seit seinem eigenen Antritt bezogene Nettopension gegenüber dem anderen aufgeholt.
 // Vereinfachung wie im restlichen Rechner: keine Verzinsung, heutiger Geldwert.
-export function breakEvenPunkt({ geburtsdatum, ergebnisA, ergebnisB }) {
+export function breakEvenPunkt({
+  geburtsdatum, ergebnisA, ergebnisB,
+  nachkaufKostenA = ergebnisA?.nachkauf?.kostenNetto ?? 0,
+  nachkaufKostenB = ergebnisB?.nachkauf?.kostenNetto ?? 0,
+}) {
   if (!ergebnisA.ok || !ergebnisB.ok) return null;
-  const segA = szenarioSegment(ergebnisA, geburtsdatum);
-  const segB = szenarioSegment(ergebnisB, geburtsdatum);
+  const segA = szenarioSegment(ergebnisA, geburtsdatum, nachkaufKostenA);
+  const segB = szenarioSegment(ergebnisB, geburtsdatum, nachkaufKostenB);
   const breakpoints = [...new Set([segA.ausstiegM, segA.antrittM, segB.ausstiegM, segB.antrittM])]
     .sort((a, b) => a - b);
   const horizont = Math.max(segA.antrittM, segB.antrittM) + 480;
