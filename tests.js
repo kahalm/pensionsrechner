@@ -15,7 +15,7 @@ const basis = {
   vmStart: 203,
   gehalt: 9000,
   lebenshaltung: 2000,
-  nachkaufAn: false,
+  nachkaufMonate: 0,
   nachkaufJahre: 5,
   wvAn: true,
 };
@@ -30,7 +30,7 @@ test('Datumslogik: ausstiegsdatum = Monatsende des Geburtstagsmonats', () => {
 
 test('Monatszählung: 203 + 242 = 445 Monate, Korridor fehlt um genau 59 Monate', () => {
   const r = berechnePensionsszenario({
-    ...basis, ausstiegsalter: 63, antrittsalter: 63, nachkaufAn: false,
+    ...basis, ausstiegsalter: 63, antrittsalter: 63,
   });
   assert.equal(r.monate.arbeitsmonate, 242);
   assert.equal(r.monate.lueckenmonate, 0);
@@ -38,7 +38,7 @@ test('Monatszählung: 203 + 242 = 445 Monate, Korridor fehlt um genau 59 Monate'
   assert.equal(CONST.KORRIDOR_MONATE - r.monate.vmOhneNachkauf, 59);
 
   const mitNachkauf = berechnePensionsszenario({
-    ...basis, ausstiegsalter: 63, antrittsalter: 63, nachkaufAn: true,
+    ...basis, ausstiegsalter: 63, antrittsalter: 63, nachkaufMonate: 59,
   });
   assert.equal(mitNachkauf.monate.nkMonate, 59);
   assert.equal(mitNachkauf.monate.vm, 504);
@@ -48,7 +48,7 @@ test('Antritt 63 (mit ausreichend Versicherungsmonaten): brutto ~3.697 €, Absc
   // vmStart wird auf 262 angehoben, um die 504-Monats-Hürde ohne Nachkauf zu
   // erfüllen – so wird die Abschlagsformel isoliert vom Nachkauf-Gutschriftbonus geprüft.
   const r = berechnePensionsszenario({
-    ...basis, vmStart: 262, ausstiegsalter: 63, antrittsalter: 63, nachkaufAn: false,
+    ...basis, vmStart: 262, ausstiegsalter: 63, antrittsalter: 63,
   });
   assert.ok(r.ok);
   assert.equal(r.monate.vm, 504);
@@ -58,7 +58,7 @@ test('Antritt 63 (mit ausreichend Versicherungsmonaten): brutto ~3.697 €, Absc
 
 test('Antritt 65: brutto ~4.364 €, kein Abschlag', () => {
   const r = berechnePensionsszenario({
-    ...basis, ausstiegsalter: 65, antrittsalter: 65, nachkaufAn: false,
+    ...basis, ausstiegsalter: 65, antrittsalter: 65,
   });
   assert.ok(r.ok);
   assert.equal(r.abschlag, 0);
@@ -68,21 +68,21 @@ test('Antritt 65: brutto ~4.364 €, kein Abschlag', () => {
 
 test('Antritt 65: netto ~3.174 €', () => {
   const r = berechnePensionsszenario({
-    ...basis, ausstiegsalter: 65, antrittsalter: 65, nachkaufAn: false,
+    ...basis, ausstiegsalter: 65, antrittsalter: 65,
   });
   assert.ok(Math.abs(r.nettoMonat - 3174) < 50, `nettoMonat=${r.nettoMonat}`);
 });
 
 test('Antritt 68: Zuschlag 15,3 % (Deckel greift)', () => {
   const r = berechnePensionsszenario({
-    ...basis, ausstiegsalter: 68, antrittsalter: 68, nachkaufAn: false,
+    ...basis, ausstiegsalter: 68, antrittsalter: 68,
   });
   assert.ok(Math.abs(r.zuschlag - 0.153) < 1e-9);
 });
 
 test('Antritt 62: kein Anspruch (Korridor erst ab 63)', () => {
   const r = berechnePensionsszenario({
-    ...basis, ausstiegsalter: 62, antrittsalter: 62, nachkaufAn: false,
+    ...basis, ausstiegsalter: 62, antrittsalter: 62,
   });
   assert.equal(r.ok, false);
   assert.equal(r.fehlercode, 'ZU_FRUEH');
@@ -96,7 +96,7 @@ test('tarif(): Grenzsteuerlogik im 40/48-%-Band', () => {
 
 test('Nachkauf aus + Antritt 63 + vm < 504: Status rot, keine Pensionsbeträge', () => {
   const r = berechnePensionsszenario({
-    ...basis, ausstiegsalter: 63, antrittsalter: 63, nachkaufAn: false,
+    ...basis, ausstiegsalter: 63, antrittsalter: 63,
   });
   assert.equal(r.ampel, 'rot');
   assert.equal(r.ok, false);
@@ -108,7 +108,7 @@ test('Nachkauf aus + Antritt 63 + vm < 504: Status rot, keine Pensionsbeträge',
 
 test('Nachkauf an + Antritt 63 + ausreichend Monate: Status gelb', () => {
   const r = berechnePensionsszenario({
-    ...basis, ausstiegsalter: 63, antrittsalter: 63, nachkaufAn: true,
+    ...basis, ausstiegsalter: 63, antrittsalter: 63, nachkaufMonate: 59,
   });
   assert.equal(r.ampel, 'gelb');
   assert.ok(r.ok);
@@ -116,7 +116,7 @@ test('Nachkauf an + Antritt 63 + ausreichend Monate: Status gelb', () => {
 
 test('Antritt 65 ohne Nachkaufbedarf: Status grün', () => {
   const r = berechnePensionsszenario({
-    ...basis, ausstiegsalter: 65, antrittsalter: 65, nachkaufAn: false,
+    ...basis, ausstiegsalter: 65, antrittsalter: 65,
   });
   assert.equal(r.ampel, 'gruen');
 });
@@ -127,7 +127,7 @@ test('monateZwischen: gleiche Tageszahl ergibt exakte Monatsdifferenz', () => {
 
 test('Nachkauf-Steuereffekt: Ersparnis liegt zwischen 0 und den vollen Kosten', () => {
   const r = berechnePensionsszenario({
-    ...basis, ausstiegsalter: 63, antrittsalter: 63, nachkaufAn: true, nachkaufJahre: 5,
+    ...basis, ausstiegsalter: 63, antrittsalter: 63, nachkaufMonate: 59, nachkaufJahre: 5,
   });
   assert.equal(r.nachkauf.kostenVoll, 59 * CONST.NK_KOSTEN_MONAT);
   assert.ok(r.nachkauf.ersparnis > 0);
@@ -166,7 +166,7 @@ test('Frau mit Regelpensionsalter 62: 2 Jahre früher (60) unterhalb Korridor-Un
 
 test('Frau mit Regelpensionsalter 64: Korridorpension mit 1 Jahr Abschlag bei Antritt 63', () => {
   const r = berechnePensionsszenario({
-    ...basis, geschlecht: 'frau', geburtsdatum: '1967-03-01', vmStart: 500, ausstiegsalter: 63, antrittsalter: 63, nachkaufAn: false,
+    ...basis, geschlecht: 'frau', geburtsdatum: '1967-03-01', vmStart: 500, ausstiegsalter: 63, antrittsalter: 63,
   });
   assert.equal(r.regelalter, 64);
   assert.ok(r.ok, `erwartete Anspruch, vm=${r.monate.vm}`);
@@ -228,7 +228,7 @@ test('breakEvenPunkt: null, wenn ein Szenario keinen Anspruch hat', () => {
 
 test('Kapitalbedarf: Lückenjahre × (Lebenshaltung + SV-Kosten), Puffer +15 %', () => {
   const r = berechnePensionsszenario({
-    ...basis, ausstiegsalter: 60, antrittsalter: 63, nachkaufAn: true, wvAn: true,
+    ...basis, ausstiegsalter: 60, antrittsalter: 63, nachkaufMonate: 59, wvAn: true,
   });
   assert.ok(r.monate.lueckenmonate > 0);
   assert.ok(Math.abs(r.kapital.kapitalPuffer - r.kapital.kapital * 1.15) < 1e-6);

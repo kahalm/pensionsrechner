@@ -1,5 +1,6 @@
 import {
   CONST, berechnePensionsszenario, vergleichsdiagramm, breakEvenPunkt, addMonths,
+  versicherungsmonate, regelpensionsalter,
 } from './pension.js';
 
 // Persönliche/eingegebene Werte starten bewusst leer (kein Beispiel-Vorausfüllen) –
@@ -15,14 +16,14 @@ const DEFAULTS = {
   lebenshaltung: 2000,
   ausstiegsalter: 60,
   antrittsalter: 63,
-  nachkaufAn: true,
+  nachkaufMonate: 0,
   nachkaufJahre: 5,
   wvAn: true,
   vergleichAn: false,
   lebenshaltungB: 2000,
   ausstiegsalterB: 65,
   antrittsalterB: 65,
-  nachkaufAnB: false,
+  nachkaufMonateB: 0,
   nachkaufJahreB: 5,
   wvAnB: true,
 };
@@ -42,19 +43,19 @@ const PARAM_KEYS = {
   lebenshaltung: 'lh',
   ausstiegsalter: 'aa',
   antrittsalter: 'pa',
-  nachkaufAn: 'nk',
+  nachkaufMonate: 'nk',
   nachkaufJahre: 'nj',
   wvAn: 'wv',
   vergleichAn: 'vgl',
   lebenshaltungB: 'lhB',
   ausstiegsalterB: 'aaB',
   antrittsalterB: 'paB',
-  nachkaufAnB: 'nkB',
+  nachkaufMonateB: 'nkB',
   nachkaufJahreB: 'njB',
   wvAnB: 'wvB',
 };
 
-const BOOL_KEYS = new Set(['nachkaufAn', 'wvAn', 'vergleichAn', 'nachkaufAnB', 'wvAnB']);
+const BOOL_KEYS = new Set(['wvAn', 'vergleichAn', 'wvAnB']);
 const STORAGE_KEY = 'pensionsrechner:eingaben';
 
 const eurFmt = new Intl.NumberFormat('de-AT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
@@ -119,14 +120,14 @@ const els = {
   lebenshaltung: document.getElementById('lebenshaltung'),
   ausstiegsalter: document.getElementById('ausstiegsalter'),
   antrittsalter: document.getElementById('antrittsalter'),
-  nachkaufAn: document.getElementById('nachkaufAn'),
+  nachkaufMonate: document.getElementById('nachkaufMonate'),
   nachkaufJahre: document.getElementById('nachkaufJahre'),
   wvAn: document.getElementById('wvAn'),
   vergleichAn: document.getElementById('vergleichAn'),
   lebenshaltungB: document.getElementById('lebenshaltungB'),
   ausstiegsalterB: document.getElementById('ausstiegsalterB'),
   antrittsalterB: document.getElementById('antrittsalterB'),
-  nachkaufAnB: document.getElementById('nachkaufAnB'),
+  nachkaufMonateB: document.getElementById('nachkaufMonateB'),
   nachkaufJahreB: document.getElementById('nachkaufJahreB'),
   wvAnB: document.getElementById('wvAnB'),
 };
@@ -135,10 +136,12 @@ const outs = {
   lebenshaltung: document.getElementById('lebenshaltungOut'),
   ausstiegsalter: document.getElementById('ausstiegsalterOut'),
   antrittsalter: document.getElementById('antrittsalterOut'),
+  nachkaufMonate: document.getElementById('nachkaufMonateOut'),
   nachkaufJahre: document.getElementById('nachkaufJahreOut'),
   lebenshaltungB: document.getElementById('lebenshaltungBOut'),
   ausstiegsalterB: document.getElementById('ausstiegsalterBOut'),
   antrittsalterB: document.getElementById('antrittsalterBOut'),
+  nachkaufMonateB: document.getElementById('nachkaufMonateBOut'),
   nachkaufJahreB: document.getElementById('nachkaufJahreBOut'),
 };
 
@@ -156,7 +159,8 @@ function eingabenInFormular() {
   els.ausstiegsalter.value = eingaben.ausstiegsalter;
   els.antrittsalter.min = eingaben.ausstiegsalter;
   els.antrittsalter.value = eingaben.antrittsalter;
-  els.nachkaufAn.checked = eingaben.nachkaufAn;
+  els.nachkaufMonate.max = eingaben.nkMaxMonate;
+  els.nachkaufMonate.value = eingaben.nachkaufMonate;
   els.nachkaufJahre.value = eingaben.nachkaufJahre;
   els.wvAn.checked = eingaben.wvAn;
   els.vergleichAn.checked = eingaben.vergleichAn;
@@ -164,23 +168,28 @@ function eingabenInFormular() {
   els.ausstiegsalterB.value = eingaben.ausstiegsalterB;
   els.antrittsalterB.min = eingaben.ausstiegsalterB;
   els.antrittsalterB.value = eingaben.antrittsalterB;
-  els.nachkaufAnB.checked = eingaben.nachkaufAnB;
+  els.nachkaufMonateB.max = eingaben.nkMaxMonate;
+  els.nachkaufMonateB.value = eingaben.nachkaufMonateB;
   els.nachkaufJahreB.value = eingaben.nachkaufJahreB;
   els.wvAnB.checked = eingaben.wvAnB;
   aktualisiereOutputs();
 }
 
 function aktualisiereOutputs() {
+  els.nachkaufMonate.max = eingaben.nkMaxMonate;
+  els.nachkaufMonateB.max = eingaben.nkMaxMonate;
   outs.lebenshaltung.textContent = eurFmt.format(eingaben.lebenshaltung);
   outs.ausstiegsalter.textContent = eingaben.ausstiegsalter;
   outs.antrittsalter.textContent = eingaben.antrittsalter;
+  outs.nachkaufMonate.textContent = numFmt.format(eingaben.nachkaufMonate);
   outs.nachkaufJahre.textContent = eingaben.nachkaufJahre;
   outs.lebenshaltungB.textContent = eurFmt.format(eingaben.lebenshaltungB);
   outs.ausstiegsalterB.textContent = eingaben.ausstiegsalterB;
   outs.antrittsalterB.textContent = eingaben.antrittsalterB;
+  outs.nachkaufMonateB.textContent = numFmt.format(eingaben.nachkaufMonateB);
   outs.nachkaufJahreB.textContent = eingaben.nachkaufJahreB;
-  document.getElementById('nachkaufJahreField').classList.toggle('disabled', !eingaben.nachkaufAn);
-  document.getElementById('nachkaufJahreBField').classList.toggle('disabled', !eingaben.nachkaufAnB);
+  document.getElementById('nachkaufJahreField').classList.toggle('disabled', eingaben.nachkaufMonate <= 0);
+  document.getElementById('nachkaufJahreBField').classList.toggle('disabled', eingaben.nachkaufMonateB <= 0);
   document.getElementById('szenarioBFieldset').hidden = !eingaben.vergleichAn;
   document.getElementById('uebernehmenButtonA').hidden = !eingaben.vergleichAn;
 }
@@ -201,14 +210,14 @@ function ausFormularLesen() {
     lebenshaltung: Number(els.lebenshaltung.value),
     ausstiegsalter: Number(els.ausstiegsalter.value),
     antrittsalter: Math.max(Number(els.antrittsalter.value), Number(els.ausstiegsalter.value)),
-    nachkaufAn: els.nachkaufAn.checked,
+    nachkaufMonate: Number(els.nachkaufMonate.value),
     nachkaufJahre: Number(els.nachkaufJahre.value),
     wvAn: els.wvAn.checked,
     vergleichAn: els.vergleichAn.checked,
     lebenshaltungB: Number(els.lebenshaltungB.value),
     ausstiegsalterB: Number(els.ausstiegsalterB.value),
     antrittsalterB: Math.max(Number(els.antrittsalterB.value), Number(els.ausstiegsalterB.value)),
-    nachkaufAnB: els.nachkaufAnB.checked,
+    nachkaufMonateB: Number(els.nachkaufMonateB.value),
     nachkaufJahreB: Number(els.nachkaufJahreB.value),
     wvAnB: els.wvAnB.checked,
   };
@@ -237,7 +246,7 @@ function neuBerechnenUndRendern() {
   }
 
   const ergebnisA = berechnePensionsszenario(eingaben);
-  rendereScenario('A', ergebnisA, eingaben.lebenshaltung, eingaben.nachkaufAn);
+  rendereScenario('A', ergebnisA, eingaben.lebenshaltung);
   rendereChart(eingaben);
 
   document.getElementById('ergebnisBoxB').hidden = !eingaben.vergleichAn;
@@ -248,12 +257,12 @@ function neuBerechnenUndRendern() {
       lebenshaltung: eingaben.lebenshaltungB,
       ausstiegsalter: eingaben.ausstiegsalterB,
       antrittsalter: eingaben.antrittsalterB,
-      nachkaufAn: eingaben.nachkaufAnB,
+      nachkaufMonate: eingaben.nachkaufMonateB,
       nachkaufJahre: eingaben.nachkaufJahreB,
       wvAn: eingaben.wvAnB,
     };
     const ergebnisB = berechnePensionsszenario(eingabenB);
-    rendereScenario('B', ergebnisB, eingabenB.lebenshaltung, eingabenB.nachkaufAn);
+    rendereScenario('B', ergebnisB, eingabenB.lebenshaltung);
     rendereVergleich(ergebnisA, ergebnisB, eingaben.geburtsdatum);
   } else {
     document.getElementById('vergleichBox').hidden = true;
@@ -327,9 +336,9 @@ function rendereKarten(suffix, ergebnis, lebenshaltung) {
   zelle(`cardKapital${suffix}`, eurFmt.format(ergebnis.kapital.kapitalPuffer));
 }
 
-function rendereNachkauf(suffix, ergebnis, nachkaufAn) {
+function rendereNachkauf(suffix, ergebnis) {
   const box = document.getElementById(`nachkaufBox${suffix}`);
-  if (!nachkaufAn || ergebnis.monate.nkMonate <= 0) {
+  if (ergebnis.monate.nkMonate <= 0) {
     box.hidden = true;
     return;
   }
@@ -354,10 +363,10 @@ function rendereDetails(suffix, ergebnis) {
   zelle(`dKapitalPuffer${suffix}`, eurFmt.format(ergebnis.kapital.kapitalPuffer));
 }
 
-function rendereScenario(suffix, ergebnis, lebenshaltung, nachkaufAn) {
+function rendereScenario(suffix, ergebnis, lebenshaltung) {
   rendereStatus(suffix, ergebnis);
   rendereKarten(suffix, ergebnis, lebenshaltung);
-  rendereNachkauf(suffix, ergebnis, nachkaufAn);
+  rendereNachkauf(suffix, ergebnis);
   rendereDetails(suffix, ergebnis);
 }
 
@@ -453,7 +462,7 @@ document.getElementById('uebernehmenButtonB').addEventListener('click', () => {
   els.ausstiegsalterB.value = els.ausstiegsalter.value;
   els.antrittsalterB.min = els.ausstiegsalter.value;
   els.antrittsalterB.value = els.antrittsalter.value;
-  els.nachkaufAnB.checked = els.nachkaufAn.checked;
+  els.nachkaufMonateB.value = els.nachkaufMonate.value;
   els.nachkaufJahreB.value = els.nachkaufJahre.value;
   els.wvAnB.checked = els.wvAn.checked;
   neuBerechnenUndRendern();
@@ -464,13 +473,109 @@ document.getElementById('uebernehmenButtonA').addEventListener('click', () => {
   els.ausstiegsalter.value = els.ausstiegsalterB.value;
   els.antrittsalter.min = els.ausstiegsalterB.value;
   els.antrittsalter.value = els.antrittsalterB.value;
-  els.nachkaufAn.checked = els.nachkaufAnB.checked;
+  els.nachkaufMonate.value = els.nachkaufMonateB.value;
   els.nachkaufJahre.value = els.nachkaufJahreB.value;
   els.wvAn.checked = els.wvAnB.checked;
   neuBerechnenUndRendern();
 });
 
-document.getElementById('form').addEventListener('input', neuBerechnenUndRendern);
+// Interaktive Kopplung Antrittsalter <-> Nachkauf-Monate (nur relevant unterhalb
+// des persönlichen Regelpensionsalters, wo die Korridorpension 504 Monate braucht).
+function benoetigteVm(suffix) {
+  if (!els.geburtsdatum.value || !els.kontoStichtag.value || els.vmStart.value === '') return null;
+  const antrittEl = suffix === 'A' ? els.antrittsalter : els.antrittsalterB;
+  const ausstiegEl = suffix === 'A' ? els.ausstiegsalter : els.ausstiegsalterB;
+  const wvEl = suffix === 'A' ? els.wvAn : els.wvAnB;
+  const monate = versicherungsmonate({
+    geburtsdatum: els.geburtsdatum.value,
+    kontoStichtag: els.kontoStichtag.value,
+    vmStart: Number(els.vmStart.value),
+    antrittsalter: Number(antrittEl.value),
+    ausstiegsalter: Number(ausstiegEl.value),
+    wvAn: wvEl.checked,
+  });
+  return monate.vmOhneNachkauf;
+}
+
+function regelalterAktuell() {
+  if (!els.geburtsdatum.value || !els.geschlecht.value) return null;
+  return regelpensionsalter(els.geschlecht.value, els.geburtsdatum.value);
+}
+
+// Antritt wurde bewegt: Nachkauf-Monate ggf. auf das nötige Minimum anheben.
+function passeNachkaufAnAntrittAn(suffix, { warnen = false } = {}) {
+  const regelalter = regelalterAktuell();
+  const vmOhneNachkauf = benoetigteVm(suffix);
+  if (regelalter === null || vmOhneNachkauf === null) return;
+  const antrittEl = suffix === 'A' ? els.antrittsalter : els.antrittsalterB;
+  const nachkaufEl = suffix === 'A' ? els.nachkaufMonate : els.nachkaufMonateB;
+  const antritt = Number(antrittEl.value);
+  if (antritt >= regelalter) return;
+
+  const benoetigt = CONST.KORRIDOR_MONATE - vmOhneNachkauf;
+  const nkMax = Number(els.nkMaxMonate.value);
+  if (benoetigt <= 0) return;
+
+  if (benoetigt > nkMax) {
+    nachkaufEl.value = nkMax;
+    if (warnen) {
+      window.alert(`Szenario ${suffix}: Bei Antrittsalter ${antritt} reicht der Nachkauf selbst am Maximum (${nkMax} Monate) nicht für die Korridorpension – es fehlen noch ${Math.ceil(benoetigt - nkMax)} Monate. Bitte Antrittsalter erhöhen oder verfügbare Nachkaufmonate prüfen.`);
+    }
+    return;
+  }
+  if (Number(nachkaufEl.value) < benoetigt) {
+    nachkaufEl.value = Math.ceil(benoetigt);
+  }
+}
+
+// Nachkauf-Monate wurden reduziert: Antrittsalter ggf. anheben, bis es wieder passt
+// (spätestens am Regelpensionsalter, wo die Korridor-Anforderung entfällt).
+function passeAntrittAnNachkaufAn(suffix) {
+  const regelalter = regelalterAktuell();
+  if (regelalter === null || !els.geburtsdatum.value || !els.kontoStichtag.value || els.vmStart.value === '') return;
+  const antrittEl = suffix === 'A' ? els.antrittsalter : els.antrittsalterB;
+  const ausstiegEl = suffix === 'A' ? els.ausstiegsalter : els.ausstiegsalterB;
+  const nachkaufEl = suffix === 'A' ? els.nachkaufMonate : els.nachkaufMonateB;
+
+  let antritt = Number(antrittEl.value);
+  if (antritt >= regelalter) return;
+  const nachkauf = Number(nachkaufEl.value);
+  const maxSlider = Number(antrittEl.max);
+
+  while (antritt < regelalter && antritt < maxSlider) {
+    const monate = versicherungsmonate({
+      geburtsdatum: els.geburtsdatum.value,
+      kontoStichtag: els.kontoStichtag.value,
+      vmStart: Number(els.vmStart.value),
+      antrittsalter: antritt,
+      ausstiegsalter: Number(ausstiegEl.value),
+      wvAn: (suffix === 'A' ? els.wvAn : els.wvAnB).checked,
+    });
+    if (monate.vmOhneNachkauf + nachkauf >= CONST.KORRIDOR_MONATE) break;
+    antritt += 1;
+  }
+  if (antritt !== Number(antrittEl.value)) {
+    antrittEl.value = antritt;
+  }
+}
+
+document.getElementById('form').addEventListener('input', (e) => {
+  const id = e.target.id;
+  if (id === 'antrittsalter') passeNachkaufAnAntrittAn('A');
+  else if (id === 'antrittsalterB') passeNachkaufAnAntrittAn('B');
+  else if (id === 'nachkaufMonate') passeAntrittAnNachkaufAn('A');
+  else if (id === 'nachkaufMonateB') passeAntrittAnNachkaufAn('B');
+  neuBerechnenUndRendern();
+});
+
+document.getElementById('form').addEventListener('change', (e) => {
+  const id = e.target.id;
+  if (id === 'antrittsalter') passeNachkaufAnAntrittAn('A', { warnen: true });
+  else if (id === 'antrittsalterB') passeNachkaufAnAntrittAn('B', { warnen: true });
+  else return;
+  neuBerechnenUndRendern();
+});
+
 document.getElementById('footerJahr').textContent = CONST.JAHR;
 
 eingabenInFormular();

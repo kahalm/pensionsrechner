@@ -106,17 +106,17 @@ export function regelpensionsalter(geschlecht, geburtsdatum) {
 }
 
 export function versicherungsmonate({
-  geburtsdatum, kontoStichtag, vmStart, antrittsalter, ausstiegsalter, nachkaufAn, wvAn,
-  nkMaxMonate = CONST.NK_MAX_MONATE, regelalter = CONST.REGELPENSIONSALTER,
+  geburtsdatum, kontoStichtag, vmStart, antrittsalter, ausstiegsalter, wvAn,
+  nachkaufMonate = 0, nkMaxMonate = CONST.NK_MAX_MONATE,
 }) {
   const ausstieg = ausstiegsdatum(geburtsdatum, ausstiegsalter);
   const stichtagP = stichtagPension(geburtsdatum, antrittsalter);
   const arbeitsmonate = Math.max(0, monateZwischen(kontoStichtag, ausstieg));
   const lueckenmonate = Math.max(0, monateZwischen(ausstieg, stichtagP));
   const vmOhneNachkauf = vmStart + arbeitsmonate + (wvAn ? lueckenmonate : 0);
-  const nkMonate = (nachkaufAn && antrittsalter < regelalter)
-    ? clamp(CONST.KORRIDOR_MONATE - vmOhneNachkauf, 0, clamp(nkMaxMonate, 0, CONST.NK_MAX_MONATE))
-    : 0;
+  // nachkaufMonate ist ein direkter Nutzerwert (Slider 0..nkMaxMonate) – kein
+  // automatisches Auffüllen mehr hier; das übernimmt die UI interaktiv.
+  const nkMonate = clamp(nachkaufMonate, 0, clamp(nkMaxMonate, 0, CONST.NK_MAX_MONATE));
   return {
     ausstieg,
     stichtagPension: stichtagP,

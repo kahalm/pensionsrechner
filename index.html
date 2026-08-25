@@ -101,15 +101,19 @@
           <input type="range" id="antrittsalter" min="60" max="68" step="1">
         </label>
 
-        <label class="field toggle-field">
-          <input type="checkbox" id="nachkaufAn">
-          <span>Nachkauf Schul-/Studienzeiten</span>
+        <label class="field slider-field">
+          <span>Nachkauf Schul-/Studienzeiten: <output id="nachkaufMonateOut"></output> Monate
+            <span class="info-icon" tabindex="0" aria-label="Info: Automatische Anpassung">i
+              <span class="info-tooltip">Wird der Antritt unter das Regelpensionsalter geschoben, hebt sich dieser Wert automatisch auf das nötige Minimum für die Korridorpension (falls niedriger). Reicht selbst das Maximum nicht, kommt ein Hinweis. Umgekehrt schiebt ein zu niedriger Wert das Antrittsalter nach oben.</span>
+            </span>
+          </span>
+          <input type="range" id="nachkaufMonate" min="0" max="108" step="1">
         </label>
 
         <label class="field slider-field" id="nachkaufJahreField">
           <span>Nachkauf verteilt über <output id="nachkaufJahreOut"></output> Jahre
-            <span class="info-icon" tabindex="0" aria-label="Info: Voraussetzung und Maximum">i
-              <span class="info-tooltip">Verteilt die Nachkaufkosten steuerlich auf 1–10 Jahre. Voraussetzung: Antrittsalter unter 65. Maximal nachkaufbar sind 108 Monate (36 höhere Schule + 72 Hochschule), begrenzt durch „Max. Nachkauf-Monate noch verfügbar" bei den persönlichen Daten.</span>
+            <span class="info-icon" tabindex="0" aria-label="Info: Steuerliche Verteilung">i
+              <span class="info-tooltip">Verteilt die Nachkaufkosten steuerlich auf 1–10 Jahre (nur relevant, wenn oben Monate gewählt sind).</span>
             </span>
           </span>
           <input type="range" id="nachkaufJahre" min="1" max="10" step="1">
@@ -141,15 +145,19 @@
           <input type="range" id="antrittsalterB" min="60" max="68" step="1">
         </label>
 
-        <label class="field toggle-field">
-          <input type="checkbox" id="nachkaufAnB">
-          <span>Nachkauf Schul-/Studienzeiten</span>
+        <label class="field slider-field">
+          <span>Nachkauf Schul-/Studienzeiten: <output id="nachkaufMonateBOut"></output> Monate
+            <span class="info-icon" tabindex="0" aria-label="Info: Automatische Anpassung">i
+              <span class="info-tooltip">Wird der Antritt unter das Regelpensionsalter geschoben, hebt sich dieser Wert automatisch auf das nötige Minimum für die Korridorpension (falls niedriger). Reicht selbst das Maximum nicht, kommt ein Hinweis. Umgekehrt schiebt ein zu niedriger Wert das Antrittsalter nach oben.</span>
+            </span>
+          </span>
+          <input type="range" id="nachkaufMonateB" min="0" max="108" step="1">
         </label>
 
         <label class="field slider-field" id="nachkaufJahreBField">
           <span>Nachkauf verteilt über <output id="nachkaufJahreBOut"></output> Jahre
-            <span class="info-icon" tabindex="0" aria-label="Info: Voraussetzung und Maximum">i
-              <span class="info-tooltip">Verteilt die Nachkaufkosten steuerlich auf 1–10 Jahre. Voraussetzung: Antrittsalter unter 65. Maximal nachkaufbar sind 108 Monate (36 höhere Schule + 72 Hochschule), begrenzt durch „Max. Nachkauf-Monate noch verfügbar" bei den persönlichen Daten.</span>
+            <span class="info-icon" tabindex="0" aria-label="Info: Steuerliche Verteilung">i
+              <span class="info-tooltip">Verteilt die Nachkaufkosten steuerlich auf 1–10 Jahre (nur relevant, wenn oben Monate gewählt sind).</span>
             </span>
           </span>
           <input type="range" id="nachkaufJahreB" min="1" max="10" step="1">
