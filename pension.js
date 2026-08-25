@@ -51,6 +51,11 @@ export const CONST = {
 
 CONST.NK_GUTSCHRIFT_MONAT = (CONST.NK_KOSTEN_MONAT / CONST.WV_SATZ) * CONST.KONTOPROZENTSATZ;
 
+// "Geringfuegig + 1 Euro": knapp UEBER der Geringfuegigkeitsgrenze. Genau darunter waere
+// man nur unfallversichert und wuerde weder Versicherungsmonate noch Krankenversicherung
+// bekommen -- der Nutzen entsteht erst mit dem einen Euro darueber (Vollversicherung).
+CONST.GF_PLUS_BG = CONST.GERINGFUEGIGKEIT + 1;
+
 export function clamp(x, lo, hi) {
   return Math.min(Math.max(x, lo), hi);
 }
@@ -115,14 +120,18 @@ export function regelpensionsalter(geschlecht, geburtsdatum) {
 }
 
 export function versicherungsmonate({
-  geburtsdatum, kontoStichtag, vmStart, antrittsalter, ausstiegsalter, wvAn,
+  geburtsdatum, kontoStichtag, vmStart, antrittsalter, ausstiegsalter, wvAn, gfAn = false,
   nachkaufMonate = 0, nkMaxMonate = CONST.NK_MAX_MONATE,
 }) {
   const ausstieg = ausstiegsdatum(geburtsdatum, ausstiegsalter);
   const stichtagP = stichtagPension(geburtsdatum, antrittsalter);
   const arbeitsmonate = Math.max(0, monateZwischen(kontoStichtag, ausstieg));
   const lueckenmonate = Math.max(0, monateZwischen(ausstieg, stichtagP));
-  const vmOhneNachkauf = vmStart + arbeitsmonate + (wvAn ? lueckenmonate : 0);
+  // Die Lueckenmonate zaehlen als Versicherungsmonate, wenn entweder freiwillig
+  // weiterversichert ODER knapp ueber der Geringfuegigkeitsgrenze angestellt (dann
+  // besteht Pflichtversicherung). gfAn hat Vorrang, doppelt zaehlen darf es nicht.
+  const lueckeZaehlt = gfAn || wvAn;
+  const vmOhneNachkauf = vmStart + arbeitsmonate + (lueckeZaehlt ? lueckenmonate : 0);
   // nachkaufMonate ist ein direkter Nutzerwert (Slider 0..nkMaxMonate) – kein
   // automatisches Auffüllen mehr hier; das übernimmt die UI interaktiv.
   const nkMonate = clamp(nachkaufMonate, 0, clamp(nkMaxMonate, 0, CONST.NK_MAX_MONATE));
@@ -138,11 +147,15 @@ export function versicherungsmonate({
 }
 
 export function gutschriftBeiAntritt({
-  konto, gehalt, arbeitsmonate, lueckenmonate, wvAn, nkMonate,
+  konto, gehalt, arbeitsmonate, lueckenmonate, wvAn, gfAn = false, nkMonate,
 }) {
   const jg = jahresgutschrift(gehalt);
   let g = konto + (arbeitsmonate / 12) * jg;
-  if (wvAn) {
+  if (gfAn) {
+    // Anstellung knapp ueber der Geringfuegigkeitsgrenze: Gutschrift wie bei jedem
+    // Dienstverhaeltnis (inkl. Sonderzahlungen), aber auf niedrigem Niveau.
+    g += (lueckenmonate / 12) * jahresgutschrift(CONST.GF_PLUS_BG);
+  } else if (wvAn) {
     g += (lueckenmonate / 12) * CONST.KONTOPROZENTSATZ * CONST.WV_BG_MIN * 12;
   }
   g += nkMonate * CONST.NK_GUTSCHRIFT_MONAT;
@@ -231,10 +244,21 @@ export function nachkaufSteuereffekt({
   };
 }
 
-export function kapitalbedarf({ lueckenmonate, lebenshaltung, wvAn }) {
-  const svJahr = CONST.KV_SELBST_MONAT * 12 + (wvAn ? CONST.WV_BG_MIN * CONST.WV_SATZ * 12 : 0);
-  const kapital = (lueckenmonate / 12) * (lebenshaltung * 12 + svJahr);
-  return { svJahr, kapital, kapitalPuffer: kapital * 1.15 };
+export function kapitalbedarf({ lueckenmonate, lebenshaltung, wvAn, gfAn = false }) {
+  // Bei Anstellung knapp ueber der Geringfuegigkeitsgrenze besteht Pflichtversicherung:
+  // die KV-Selbstversicherung entfaellt, eine freiwillige PV-Weiterversicherung ist
+  // daneben weder noetig noch vorgesehen.
+  const svJahr = gfAn
+    ? 0
+    : CONST.KV_SELBST_MONAT * 12 + (wvAn ? CONST.WV_BG_MIN * CONST.WV_SATZ * 12 : 0);
+  // Das Erwerbseinkommen in der Luecke mindert den Kapitalbedarf. Lohnsteuer faellt bei
+  // diesem Niveau keine an (weit unter dem Steuerfreibetrag), nur SV-Dienstnehmeranteil.
+  const nettoEinkommenJahr = gfAn
+    ? CONST.GF_PLUS_BG * 14 * (1 - CONST.SV_DN_SATZ)
+    : 0;
+  const bedarfProJahr = Math.max(0, lebenshaltung * 12 + svJahr - nettoEinkommenJahr);
+  const kapital = (lueckenmonate / 12) * bedarfProJahr;
+  return { svJahr, nettoEinkommenJahr, kapital, kapitalPuffer: kapital * 1.15 };
 }
 
 // "gelb" nur, wenn der Nachkauf für den Anspruch tatsächlich nötig war – also unterhalb
@@ -379,6 +403,7 @@ export function berechnePensionsszenario(eingaben) {
     arbeitsmonate: monate.arbeitsmonate,
     lueckenmonate: monate.lueckenmonate,
     wvAn: eingaben.wvAn,
+    gfAn: eingaben.gfAn,
     nkMonate: monate.nkMonate,
   });
   const anspruch = anspruchUndBrutto({
@@ -390,7 +415,10 @@ export function berechnePensionsszenario(eingaben) {
     nkMonate: monate.nkMonate, gehalt: eingaben.gehalt, nachkaufJahre: eingaben.nachkaufJahre, jahreBisAntritt,
   });
   const kapital = kapitalbedarf({
-    lueckenmonate: monate.lueckenmonate, lebenshaltung: eingaben.lebenshaltung, wvAn: eingaben.wvAn,
+    lueckenmonate: monate.lueckenmonate,
+    lebenshaltung: eingaben.lebenshaltung,
+    wvAn: eingaben.wvAn,
+    gfAn: eingaben.gfAn,
   });
   const amortisation = amortisationEinMonat({
     abschlag: anspruch.abschlag,

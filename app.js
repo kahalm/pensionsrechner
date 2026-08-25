@@ -19,6 +19,7 @@ const DEFAULTS = {
   nachkaufMonate: 0,
   nachkaufJahre: 5,
   wvAn: true,
+  gfAn: false,
   reduktionProzent: 20,
   vergleichAn: false,
   nachkaufAlsEtf: false,
@@ -28,6 +29,7 @@ const DEFAULTS = {
   nachkaufMonateB: 0,
   nachkaufJahreB: 5,
   wvAnB: true,
+  gfAnB: false,
   reduktionProzentB: 20,
 };
 
@@ -49,6 +51,7 @@ const PARAM_KEYS = {
   nachkaufMonate: 'nk',
   nachkaufJahre: 'nj',
   wvAn: 'wv',
+  gfAn: 'gf',
   reduktionProzent: 'red',
   vergleichAn: 'vgl',
   nachkaufAlsEtf: 'nketf',
@@ -58,10 +61,11 @@ const PARAM_KEYS = {
   nachkaufMonateB: 'nkB',
   nachkaufJahreB: 'njB',
   wvAnB: 'wvB',
+  gfAnB: 'gfB',
   reduktionProzentB: 'redB',
 };
 
-const BOOL_KEYS = new Set(['wvAn', 'vergleichAn', 'wvAnB', 'nachkaufAlsEtf']);
+const BOOL_KEYS = new Set(['wvAn', 'vergleichAn', 'wvAnB', 'nachkaufAlsEtf', 'gfAn', 'gfAnB']);
 const STORAGE_KEY = 'pensionsrechner:eingaben';
 
 const eurFmt = new Intl.NumberFormat('de-AT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
@@ -129,6 +133,7 @@ const els = {
   nachkaufMonate: document.getElementById('nachkaufMonate'),
   nachkaufJahre: document.getElementById('nachkaufJahre'),
   wvAn: document.getElementById('wvAn'),
+  gfAn: document.getElementById('gfAn'),
   reduktionProzent: document.getElementById('reduktionProzent'),
   vergleichAn: document.getElementById('vergleichAn'),
   nachkaufAlsEtf: document.getElementById('nachkaufAlsEtf'),
@@ -138,6 +143,7 @@ const els = {
   nachkaufMonateB: document.getElementById('nachkaufMonateB'),
   nachkaufJahreB: document.getElementById('nachkaufJahreB'),
   wvAnB: document.getElementById('wvAnB'),
+  gfAnB: document.getElementById('gfAnB'),
   reduktionProzentB: document.getElementById('reduktionProzentB'),
 };
 
@@ -174,6 +180,7 @@ function eingabenInFormular() {
   els.nachkaufMonate.value = eingaben.nachkaufMonate;
   els.nachkaufJahre.value = eingaben.nachkaufJahre;
   els.wvAn.checked = eingaben.wvAn;
+  els.gfAn.checked = eingaben.gfAn;
   els.reduktionProzent.value = eingaben.reduktionProzent;
   els.vergleichAn.checked = eingaben.vergleichAn;
   els.nachkaufAlsEtf.checked = eingaben.nachkaufAlsEtf;
@@ -185,6 +192,7 @@ function eingabenInFormular() {
   els.nachkaufMonateB.value = eingaben.nachkaufMonateB;
   els.nachkaufJahreB.value = eingaben.nachkaufJahreB;
   els.wvAnB.checked = eingaben.wvAnB;
+  els.gfAnB.checked = eingaben.gfAnB;
   els.reduktionProzentB.value = eingaben.reduktionProzentB;
   aktualisiereOutputs();
 }
@@ -206,6 +214,10 @@ function aktualisiereOutputs() {
   outs.reduktionProzentB.textContent = `${eingaben.reduktionProzentB} %`;
   document.getElementById('nachkaufJahreField').classList.toggle('disabled', eingaben.nachkaufMonate <= 0);
   document.getElementById('nachkaufJahreBField').classList.toggle('disabled', eingaben.nachkaufMonateB <= 0);
+  // Bei Anstellung ueber der Geringfuegigkeitsgrenze besteht Pflichtversicherung –
+  // eine freiwillige Weiterversicherung ist daneben nicht vorgesehen.
+  els.wvAn.closest('.field').classList.toggle('disabled', eingaben.gfAn);
+  els.wvAnB.closest('.field').classList.toggle('disabled', eingaben.gfAnB);
   document.getElementById('szenarioBFieldset').hidden = !eingaben.vergleichAn;
   document.getElementById('uebernehmenButtonA').hidden = !eingaben.vergleichAn;
 }
@@ -229,6 +241,7 @@ function ausFormularLesen() {
     nachkaufMonate: Number(els.nachkaufMonate.value),
     nachkaufJahre: Number(els.nachkaufJahre.value),
     wvAn: els.wvAn.checked,
+    gfAn: els.gfAn.checked,
     reduktionProzent: Number(els.reduktionProzent.value),
     vergleichAn: els.vergleichAn.checked,
     nachkaufAlsEtf: els.nachkaufAlsEtf.checked,
@@ -238,6 +251,7 @@ function ausFormularLesen() {
     nachkaufMonateB: Number(els.nachkaufMonateB.value),
     nachkaufJahreB: Number(els.nachkaufJahreB.value),
     wvAnB: els.wvAnB.checked,
+    gfAnB: els.gfAnB.checked,
     reduktionProzentB: Number(els.reduktionProzentB.value),
   };
 }
@@ -279,6 +293,7 @@ function neuBerechnenUndRendern() {
       nachkaufMonate: eingaben.nachkaufMonateB,
       nachkaufJahre: eingaben.nachkaufJahreB,
       wvAn: eingaben.wvAnB,
+      gfAn: eingaben.gfAnB,
       reduktionProzent: eingaben.reduktionProzentB,
     };
     const ergebnisB = berechnePensionsszenario(eingabenB);
@@ -306,7 +321,7 @@ function rendereLeerZustand() {
     document.getElementById(`nachkaufBox${suffix}`).hidden = true;
     document.getElementById(`amortisationBox${suffix}`).hidden = true;
     document.getElementById(`reduktionBox${suffix}`).hidden = true;
-    ['dVm', 'dNk', 'dGutschrift', 'dRegelalter', 'dAbschlagZuschlag', 'dSvJahr', 'dKapitalPuffer'].forEach((praefix) => {
+    ['dVm', 'dNk', 'dGutschrift', 'dRegelalter', 'dAbschlagZuschlag', 'dSvJahr', 'dGfEink', 'dKapitalPuffer'].forEach((praefix) => {
       zelle(`${praefix}${suffix}`, '–');
     });
   }
@@ -381,6 +396,9 @@ function rendereDetails(suffix, ergebnis) {
     ? (ergebnis.abschlag > 0 ? `- ${pctFmt.format(ergebnis.abschlag)}` : `+ ${pctFmt.format(ergebnis.zuschlag)}`)
     : '–');
   zelle(`dSvJahr${suffix}`, eurFmt.format(ergebnis.kapital.svJahr));
+  zelle(`dGfEink${suffix}`, ergebnis.kapital.nettoEinkommenJahr > 0
+    ? `+ ${eurFmt.format(ergebnis.kapital.nettoEinkommenJahr)}`
+    : '–');
   zelle(`dKapitalPuffer${suffix}`, eurFmt.format(ergebnis.kapital.kapitalPuffer));
 }
 
@@ -728,6 +746,27 @@ const INFO_TEXTE = {
     <br><br>
     Nicht enthalten: dass die Pension lebenslang läuft, ein angespartes Kapital aber endlich ist – der
     Nachkauf ist damit auch eine Absicherung gegen ein langes Leben.`,
+  gfAn: `In der Lücke zwischen Ausstieg und Antritt ein Dienstverhältnis <strong>knapp über</strong> der
+    Geringfügigkeitsgrenze (${eurFmt2.format(CONST.GERINGFUEGIGKEIT)}/Monat) – gerechnet wird mit
+    ${eurFmt2.format(CONST.GF_PLUS_BG)}/Monat.
+    <br><br>
+    <strong>Der eine Euro entscheidet:</strong> Genau <em>unter</em> der Grenze ist man nur unfallversichert –
+    keine Versicherungsmonate, keine Krankenversicherung. Erst <em>darüber</em> greift die Vollversicherung.
+    „Geringfügig" im Rechtssinn nützt hier also gar nichts.
+    <br><br>
+    Drei Effekte, alle im Ergebnis berücksichtigt:
+    <br>• Die Lückenmonate zählen als Versicherungsmonate (relevant für die ${CONST.KORRIDOR_MONATE} Monate
+    der Korridorpension) – deutlich billiger als Nachkauf: rund
+    ${eurFmt2.format(CONST.GF_PLUS_BG * 0.1025)} Dienstnehmeranteil pro Monat statt
+    ${eurFmt.format(CONST.NK_KOSTEN_MONAT)}.
+    <br>• Die KV-Selbstversicherung (${eurFmt.format(CONST.KV_SELBST_MONAT * 12)}/Jahr) entfällt.
+    <br>• Das Einkommen mindert den Kapitalbedarf; Lohnsteuer fällt auf diesem Niveau keine an.
+    <br><br>
+    Die Gutschrift bleibt naturgemäß klein (${eurFmt2.format(CONST.KONTOPROZENTSATZ * CONST.GF_PLUS_BG * 14)}/Jahr) –
+    es geht um Monate und Versicherungsschutz, nicht um Pensionshöhe.
+    <br><br>
+    <strong>Achtung:</strong> Am Stichtag der Korridorpension selbst darf kein Erwerbseinkommen über der
+    Geringfügigkeitsgrenze bestehen – das Dienstverhältnis muss also bis dahin beendet oder reduziert sein.`,
   reduktionProzent: `Was kostet eine Reduktion der Arbeitszeit an <strong>monatlicher Pension</strong>?
     Gerechnet wird mit entsprechend geringerem Bruttogehalt für die noch offenen Erwerbsmonate
     (Gutschrift-Stichtag bis Ausstieg). Bereits erworbene Kontogutschrift, Nachkauf und

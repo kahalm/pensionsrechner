@@ -84,6 +84,13 @@
           <input type="range" id="lebenshaltung" min="1000" max="6000" step="100">
         </label>
 
+        <label class="field toggle-field">
+          <input type="checkbox" id="gfAn">
+          <span>Bis zum Antritt geringfügig + 1 € arbeiten
+            <button type="button" class="info-icon" data-info="gfAn" aria-label="Info: Warum ein Euro darüber?">i</button>
+          </span>
+        </label>
+
         <label class="field slider-field">
           <span>Ausstiegsalter <output id="ausstiegsalterOut"></output></span>
           <input type="range" id="ausstiegsalter" min="55" max="68" step="1">
@@ -131,6 +138,13 @@
         <label class="field slider-field">
           <span>Lebenshaltung netto/Monat <output id="lebenshaltungBOut"></output></span>
           <input type="range" id="lebenshaltungB" min="1000" max="6000" step="100">
+        </label>
+
+        <label class="field toggle-field">
+          <input type="checkbox" id="gfAnB">
+          <span>Bis zum Antritt geringfügig + 1 € arbeiten
+            <button type="button" class="info-icon" data-info="gfAn" aria-label="Info: Warum ein Euro darüber?">i</button>
+          </span>
         </label>
 
         <label class="field slider-field">
@@ -242,6 +256,7 @@
               <tr><th>Regelpensionsalter</th><td id="dRegelalterA">–</td></tr>
               <tr><th>Abschlag / Zuschlag</th><td id="dAbschlagZuschlagA">–</td></tr>
               <tr><th>SV-Kosten pro Lückenjahr</th><td id="dSvJahrA">–</td></tr>
+              <tr><th>Erwerbseinkommen pro Lückenjahr (netto)</th><td id="dGfEinkA">–</td></tr>
               <tr><th>Kapitalbedarf inkl. Puffer (+15 %)</th><td id="dKapitalPufferA">–</td></tr>
             </tbody>
           </table>
@@ -330,6 +345,7 @@
               <tr><th>Regelpensionsalter</th><td id="dRegelalterB">–</td></tr>
               <tr><th>Abschlag / Zuschlag</th><td id="dAbschlagZuschlagB">–</td></tr>
               <tr><th>SV-Kosten pro Lückenjahr</th><td id="dSvJahrB">–</td></tr>
+              <tr><th>Erwerbseinkommen pro Lückenjahr (netto)</th><td id="dGfEinkB">–</td></tr>
               <tr><th>Kapitalbedarf inkl. Puffer (+15 %)</th><td id="dKapitalPufferB">–</td></tr>
             </tbody>
           </table>

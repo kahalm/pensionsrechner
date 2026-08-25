@@ -464,6 +464,51 @@ test('stundenreduzierungEffekt: große Reduktion unter die HBGl wirkt nur anteil
     `wirksam=${s.wirksameReduktionProzent}`);
 });
 
+test('gfAn: Lückenmonate zählen als Versicherungsmonate (wie Weiterversicherung)', () => {
+  const b = { ...basis, ausstiegsalter: 60, antrittsalter: 63, nachkaufMonate: 0 };
+  const ohne = berechnePensionsszenario({ ...b, wvAn: false, gfAn: false });
+  const mit = berechnePensionsszenario({ ...b, wvAn: false, gfAn: true });
+  assert.equal(mit.monate.vmOhneNachkauf - ohne.monate.vmOhneNachkauf, ohne.monate.lueckenmonate);
+});
+
+test('gfAn: keine Doppelzählung, wenn zusätzlich Weiterversicherung an ist', () => {
+  const b = { ...basis, ausstiegsalter: 60, antrittsalter: 63, nachkaufMonate: 0 };
+  const nurWv = berechnePensionsszenario({ ...b, wvAn: true, gfAn: false });
+  const beides = berechnePensionsszenario({ ...b, wvAn: true, gfAn: true });
+  assert.equal(beides.monate.vmOhneNachkauf, nurWv.monate.vmOhneNachkauf);
+});
+
+test('gfAn: KV-Selbstversicherung entfällt und Einkommen mindert den Kapitalbedarf', () => {
+  const b = {
+    ...basis, ausstiegsalter: 60, antrittsalter: 63, nachkaufMonate: 0, lebenshaltung: 2000,
+  };
+  const ohne = berechnePensionsszenario({ ...b, wvAn: false, gfAn: false });
+  const mit = berechnePensionsszenario({ ...b, wvAn: false, gfAn: true });
+  assert.ok(Math.abs(ohne.kapital.svJahr - CONST.KV_SELBST_MONAT * 12) < 1e-9);
+  assert.equal(mit.kapital.svJahr, 0, 'KV-Selbstversicherung muss entfallen');
+  assert.ok(mit.kapital.nettoEinkommenJahr > 0, 'Erwerbseinkommen muss angesetzt werden');
+  assert.equal(ohne.kapital.nettoEinkommenJahr, 0);
+  assert.ok(mit.kapital.kapitalPuffer < ohne.kapital.kapitalPuffer, 'Kapitalbedarf muss sinken');
+});
+
+test('gfAn: Gutschrift steigt, bleibt aber klein', () => {
+  const b = { ...basis, ausstiegsalter: 60, antrittsalter: 63, nachkaufMonate: 0, wvAn: false };
+  const ohne = berechnePensionsszenario({ ...b, gfAn: false });
+  const mit = berechnePensionsszenario({ ...b, gfAn: true });
+  assert.ok(mit.gutschrift > ohne.gutschrift);
+  // Beitragsgrundlage ist die Geringfügigkeitsgrenze + 1 EUR, inkl. Sonderzahlungen
+  const erwartet = (ohne.monate.lueckenmonate / 12) * CONST.KONTOPROZENTSATZ * CONST.GF_PLUS_BG * 14;
+  assert.ok(Math.abs(mit.gutschrift - ohne.gutschrift - erwartet) < 1e-6);
+});
+
+test('gfAn: Kapitalbedarf wird nie negativ', () => {
+  const r = berechnePensionsszenario({
+    ...basis, ausstiegsalter: 60, antrittsalter: 63, nachkaufMonate: 0,
+    wvAn: false, gfAn: true, lebenshaltung: 100,
+  });
+  assert.ok(r.kapital.kapital >= 0, `kapital=${r.kapital.kapital}`);
+});
+
 test('berechnePensionsszenario liefert amortisation + wvVergleich', () => {
   const r = berechnePensionsszenario({
     ...basis, ausstiegsalter: 65, antrittsalter: 65,
