@@ -73,6 +73,21 @@ main {
   font-size: 0.9rem;
 }
 
+.official-link {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+}
+
+.official-link a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.official-link a:hover {
+  text-decoration: underline;
+}
+
 fieldset {
   border: 1px solid var(--border);
   border-radius: 10px;

@@ -546,41 +546,10 @@ function passeNachkaufAnAntrittAn(suffix, { warnen = false } = {}) {
 
 // Nachkauf-Monate wurden reduziert: Antrittsalter ggf. anheben, bis es wieder passt
 // (spätestens am Regelpensionsalter, wo die Korridor-Anforderung entfällt).
-function passeAntrittAnNachkaufAn(suffix) {
-  const regelalter = regelalterAktuell();
-  if (regelalter === null || !els.geburtsdatum.value || !els.kontoStichtag.value || els.vmStart.value === '') return;
-  const antrittEl = suffix === 'A' ? els.antrittsalter : els.antrittsalterB;
-  const ausstiegEl = suffix === 'A' ? els.ausstiegsalter : els.ausstiegsalterB;
-  const nachkaufEl = suffix === 'A' ? els.nachkaufMonate : els.nachkaufMonateB;
-
-  let antritt = Number(antrittEl.value);
-  if (antritt >= regelalter) return;
-  const nachkauf = Number(nachkaufEl.value);
-  const maxSlider = Number(antrittEl.max);
-
-  while (antritt < regelalter && antritt < maxSlider) {
-    const monate = versicherungsmonate({
-      geburtsdatum: els.geburtsdatum.value,
-      kontoStichtag: els.kontoStichtag.value,
-      vmStart: Number(els.vmStart.value),
-      antrittsalter: antritt,
-      ausstiegsalter: Number(ausstiegEl.value),
-      wvAn: (suffix === 'A' ? els.wvAn : els.wvAnB).checked,
-    });
-    if (monate.vmOhneNachkauf + nachkauf >= CONST.KORRIDOR_MONATE) break;
-    antritt += 1;
-  }
-  if (antritt !== Number(antrittEl.value)) {
-    antrittEl.value = antritt;
-  }
-}
-
 document.getElementById('form').addEventListener('input', (e) => {
   const id = e.target.id;
   if (id === 'antrittsalter') passeNachkaufAnAntrittAn('A');
   else if (id === 'antrittsalterB') passeNachkaufAnAntrittAn('B');
-  else if (id === 'nachkaufMonate') passeAntrittAnNachkaufAn('A');
-  else if (id === 'nachkaufMonateB') passeAntrittAnNachkaufAn('B');
   neuBerechnenUndRendern();
 });
 
@@ -614,7 +583,8 @@ const INFO_TEXTE = {
     <a href="https://www.pensionsversicherung.at" target="_blank" rel="noopener">Zur Pensionsversicherung →</a>`,
   nachkaufMonate: `Wird der Antritt unter das Regelpensionsalter geschoben, hebt sich dieser Wert automatisch
     auf das nötige Minimum für die Korridorpension (falls niedriger). Reicht selbst das Maximum nicht, kommt
-    ein Hinweis. Umgekehrt schiebt ein zu niedriger Wert das Antrittsalter nach oben.`,
+    ein Hinweis. Senkst du diesen Wert danach wieder unter das Minimum, bleibt das Antrittsalter unverändert –
+    die Statuszeile zeigt dann in Rot, wie viele Monate fehlen.`,
   nachkaufJahre: 'Verteilt die Nachkaufkosten steuerlich auf 1–10 Jahre (nur relevant, wenn oben Monate gewählt sind).',
   wvAn: `Betrifft nur die <strong>Pensionsversicherung</strong> (§17 ASVG) – das ist freiwillig: niemand
     zwingt dich, in der Lücke weiter PV-Beiträge zu zahlen. Lässt du es weg, sparst du dir die Beiträge,
