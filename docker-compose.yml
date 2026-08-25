@@ -1,5 +1,31 @@
+# Lokales Bauen/Testen. Die Deployment-Variante (GHCR-Image, NPM-Netz) liegt im Stack
+# unter /opt/stacks/pensionsrechner/compose.yaml.
 services:
   pensionsrechner:
     build: .
     ports:
       - "8080:80"
+    volumes:
+      # nginx schreibt das JSON-Zugriffslog hierher, Fluent Bit liest es.
+      - nginx-logs:/var/log/nginx
+
+  # Versendet jeden Website-Aufruf an den pensionsrechner-Index in Elasticsearch.
+  fluent-bit:
+    image: fluent/fluent-bit:3.1
+    restart: unless-stopped
+    depends_on:
+      - pensionsrechner
+    command: ["/fluent-bit/bin/fluent-bit", "-c", "/fluent-bit/etc/fluent-bit.conf"]
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-10.24.13.6}
+      ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
+      # Fluent Bit schreibt nach "<wert>-web".
+      ELASTICSEARCH_INDEX: ${ELASTICSEARCH_INDEX:-pensionsrechner-dev}
+    volumes:
+      - nginx-logs:/var/log/nginx
+      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+
+volumes:
+  nginx-logs:

@@ -1,0 +1,43 @@
+# Pensionsrechner Österreich — https://github.com/kahalm/pensionsrechner
+# Stack-Konvention wie rct/log-watcher: Image von GHCR, CI baut bei jedem Push.
+# Kanal :dev = main-Branch. Sobald ein v*-Tag released wird, gibt es zusätzlich :latest
+# (dann hier auf :latest umstellen). Update: docker compose pull && docker compose up -d
+#
+# Zugriffs-Logging analog lehrplan-at: nginx schreibt ein JSON-Access-Log in ein geteiltes
+# Volume, Fluent Bit tailt es und schickt jeden Aufruf nach Elasticsearch.
+services:
+  pensionsrechner:
+    image: ghcr.io/kahalm/pensionsrechner:dev
+    container_name: pensionsrechner
+    restart: unless-stopped
+    ports:
+      - 8887:80   # interne Portweiterleitung, NPM macht HTTPS
+    networks:
+      - nginx-proxy-net
+    volumes:
+      - nginx-logs:/var/log/nginx
+
+  fluent-bit:
+    image: fluent/fluent-bit:3.1
+    container_name: pensionsrechner-fluent-bit
+    restart: unless-stopped
+    depends_on:
+      - pensionsrechner
+    command: ["/fluent-bit/bin/fluent-bit", "-c", "/fluent-bit/etc/fluent-bit.conf"]
+    environment:
+      APP_ENV: ${APP_ENV:-prod}
+      ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-10.24.13.6}
+      ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
+      # Fluent Bit schreibt nach "<wert>-web" -> pensionsrechner-prod-web
+      ELASTICSEARCH_INDEX: ${ELASTICSEARCH_INDEX:-pensionsrechner-prod}
+    volumes:
+      - nginx-logs:/var/log/nginx
+      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+
+networks:
+  nginx-proxy-net:
+    external: true
+
+volumes:
+  nginx-logs:
