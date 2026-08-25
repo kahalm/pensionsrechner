@@ -101,17 +101,28 @@ legend {
   .grid { grid-template-columns: 1fr 1fr; }
 }
 
+.szenario-spalten {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.szenario-spalten > fieldset {
+  margin-bottom: 0;
+}
+
 @media (min-width: 900px) {
   main { max-width: 1100px; }
-  .szenario-spalten.zwei-spalten {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    align-items: start;
+  .szenario-spalten {
+    flex-direction: row;
+    align-items: flex-start;
   }
-  .szenario-spalten.zwei-spalten fieldset.grid {
+  .szenario-spalten > fieldset {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .szenario-spalten fieldset.grid {
     grid-template-columns: 1fr;
-    margin-bottom: 0;
   }
 }
 
