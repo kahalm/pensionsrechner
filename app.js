@@ -182,6 +182,7 @@ function aktualisiereOutputs() {
   document.getElementById('nachkaufJahreField').classList.toggle('disabled', !eingaben.nachkaufAn);
   document.getElementById('nachkaufJahreBField').classList.toggle('disabled', !eingaben.nachkaufAnB);
   document.getElementById('szenarioBFieldset').hidden = !eingaben.vergleichAn;
+  document.getElementById('uebernehmenButtonA').hidden = !eingaben.vergleichAn;
 }
 
 function leseZahlfeld(el) {
@@ -447,7 +448,7 @@ function rendereVergleich(ergebnisA, ergebnisB, geburtsdatum) {
   }
 }
 
-document.getElementById('uebernehmenButton').addEventListener('click', () => {
+document.getElementById('uebernehmenButtonB').addEventListener('click', () => {
   els.lebenshaltungB.value = els.lebenshaltung.value;
   els.ausstiegsalterB.value = els.ausstiegsalter.value;
   els.antrittsalterB.min = els.ausstiegsalter.value;
@@ -455,6 +456,17 @@ document.getElementById('uebernehmenButton').addEventListener('click', () => {
   els.nachkaufAnB.checked = els.nachkaufAn.checked;
   els.nachkaufJahreB.value = els.nachkaufJahre.value;
   els.wvAnB.checked = els.wvAn.checked;
+  neuBerechnenUndRendern();
+});
+
+document.getElementById('uebernehmenButtonA').addEventListener('click', () => {
+  els.lebenshaltung.value = els.lebenshaltungB.value;
+  els.ausstiegsalter.value = els.ausstiegsalterB.value;
+  els.antrittsalter.min = els.ausstiegsalterB.value;
+  els.antrittsalter.value = els.antrittsalterB.value;
+  els.nachkaufAn.checked = els.nachkaufAnB.checked;
+  els.nachkaufJahre.value = els.nachkaufJahreB.value;
+  els.wvAn.checked = els.wvAnB.checked;
   neuBerechnenUndRendern();
 });
 

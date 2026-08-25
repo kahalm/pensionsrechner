@@ -84,6 +84,8 @@
       <fieldset class="grid">
         <legend>Szenario A</legend>
 
+        <button type="button" class="uebernehmen-btn" id="uebernehmenButtonA" hidden>Einstellungen von Szenario B übernehmen</button>
+
         <label class="field slider-field">
           <span>Lebenshaltung netto/Monat <output id="lebenshaltungOut"></output></span>
           <input type="range" id="lebenshaltung" min="1000" max="6000" step="100">
@@ -122,7 +124,7 @@
       <fieldset class="grid" id="szenarioBFieldset" hidden>
         <legend>Szenario B</legend>
 
-        <button type="button" class="uebernehmen-btn" id="uebernehmenButton">Einstellungen von Szenario A übernehmen</button>
+        <button type="button" class="uebernehmen-btn" id="uebernehmenButtonB">Einstellungen von Szenario A übernehmen</button>
 
         <label class="field slider-field">
           <span>Lebenshaltung netto/Monat <output id="lebenshaltungBOut"></output></span>
