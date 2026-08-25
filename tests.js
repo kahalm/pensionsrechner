@@ -135,6 +135,23 @@ test('Nachkauf-Steuereffekt: Ersparnis liegt zwischen 0 und den vollen Kosten', 
   assert.ok(Math.abs(r.nachkauf.ratePerJahr - r.nachkauf.kostenVoll / 5) < 1e-9);
 });
 
+test('Nachkauf-Alternative: Nettokosten mit 5%/Jahr bis Antritt verzinst (ETF statt Nachkauf)', () => {
+  const r = berechnePensionsszenario({
+    ...basis, ausstiegsalter: 63, antrittsalter: 63, nachkaufMonate: 59, nachkaufJahre: 5,
+  });
+  const jahre = monateZwischen('2026-01-01', r.monate.stichtagPension) / 12;
+  const erwartet = r.nachkauf.kostenNetto * (1.05 ** jahre);
+  assert.ok(Math.abs(r.nachkauf.etfWert - erwartet) < 1e-6);
+  assert.ok(r.nachkauf.etfWert > r.nachkauf.kostenNetto, 'sollte über die Jahre wachsen');
+});
+
+test('Nachkauf-Alternative: 0 ohne Nachkauf', () => {
+  const r = berechnePensionsszenario({
+    ...basis, ausstiegsalter: 65, antrittsalter: 65,
+  });
+  assert.equal(r.nachkauf.etfWert, 0);
+});
+
 test('regelpensionsalter: Männer immer 65, unabhängig vom Geburtsdatum', () => {
   assert.equal(regelpensionsalter('mann', '1965-01-01'), 65);
   assert.equal(regelpensionsalter('mann', '2000-01-01'), 65);

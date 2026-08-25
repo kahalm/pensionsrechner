@@ -349,6 +349,7 @@ function rendereNachkauf(suffix, ergebnis) {
   zelle(`nkKostenNetto${suffix}`, eurFmt.format(ergebnis.nachkauf.kostenNetto));
   zelle(`nkEffSatz${suffix}`, pctFmt.format(ergebnis.nachkauf.effSatz));
   zelle(`nkRate${suffix}`, eurFmt.format(ergebnis.nachkauf.ratePerJahr));
+  zelle(`nkEtf${suffix}`, eurFmt.format(ergebnis.nachkauf.etfWert));
 }
 
 function rendereDetails(suffix, ergebnis) {

@@ -38,6 +38,9 @@ export const CONST = {
   SZ_STEUERSATZ: 0.06,
   KV_PENSION: 0.06,
   NETTO_KALIBRIERUNG: 0.973,
+
+  // Alternative "ETF statt Nachkauf": ca. 7 % Bruttorendite p.a. minus 27,5 % KESt.
+  ETF_RENDITE_NETTO: 0.05,
 };
 
 CONST.NK_GUTSCHRIFT_MONAT = (CONST.NK_KOSTEN_MONAT / CONST.WV_SATZ) * CONST.KONTOPROZENTSATZ;
@@ -201,19 +204,24 @@ export function nettoMonat(bruttoMonat) {
   return ((lauf + sz - kv - lst - lstSz) / 14) * CONST.NETTO_KALIBRIERUNG;
 }
 
-export function nachkaufSteuereffekt({ nkMonate, gehalt, nachkaufJahre }) {
+export function nachkaufSteuereffekt({
+  nkMonate, gehalt, nachkaufJahre, jahreBisAntritt = 0,
+}) {
   const kostenVoll = nkMonate * CONST.NK_KOSTEN_MONAT;
   if (kostenVoll <= 0) {
     return {
-      kostenVoll: 0, ratePerJahr: 0, ersparnis: 0, kostenNetto: 0, effSatz: 0,
+      kostenVoll: 0, ratePerJahr: 0, ersparnis: 0, kostenNetto: 0, effSatz: 0, etfWert: 0,
     };
   }
   const bemessung = 12 * gehalt - 12 * Math.min(gehalt, CONST.HBGL_MONAT) * CONST.SV_DN_SATZ;
   const rate = kostenVoll / nachkaufJahre;
   const ersparnis = nachkaufJahre * (tarif(bemessung) - tarif(Math.max(0, bemessung - rate)));
   const kostenNetto = kostenVoll - ersparnis;
+  // Alternative: die tatsächlich gebundenen Nettokosten stattdessen in ein ETF
+  // investiert (Annahme ca. 7 % brutto − KESt ≈ 5 % netto p.a.), bis zum Antritt verzinst.
+  const etfWert = kostenNetto * (1 + CONST.ETF_RENDITE_NETTO) ** Math.max(0, jahreBisAntritt);
   return {
-    kostenVoll, ratePerJahr: rate, ersparnis, kostenNetto, effSatz: ersparnis / kostenVoll,
+    kostenVoll, ratePerJahr: rate, ersparnis, kostenNetto, effSatz: ersparnis / kostenVoll, etfWert,
   };
 }
 
@@ -245,8 +253,9 @@ export function berechnePensionsszenario(eingaben) {
     antrittsalter, vm: monate.vm, gutschrift, regelalter,
   });
   const netto = anspruch.ok ? nettoMonat(anspruch.bruttoMonat) : null;
+  const jahreBisAntritt = monateZwischen(eingaben.kontoStichtag, monate.stichtagPension) / 12;
   const nachkauf = nachkaufSteuereffekt({
-    nkMonate: monate.nkMonate, gehalt: eingaben.gehalt, nachkaufJahre: eingaben.nachkaufJahre,
+    nkMonate: monate.nkMonate, gehalt: eingaben.gehalt, nachkaufJahre: eingaben.nachkaufJahre, jahreBisAntritt,
   });
   const kapital = kapitalbedarf({
     lueckenmonate: monate.lueckenmonate, lebenshaltung: eingaben.lebenshaltung, wvAn: eingaben.wvAn,
