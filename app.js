@@ -1,6 +1,6 @@
 import {
   CONST, berechnePensionsszenario, vergleichsdiagramm, breakEvenPunkt, addMonths,
-  versicherungsmonate, regelpensionsalter,
+  versicherungsmonate, regelpensionsalter, nettoErwerbseinkommenJahr, istVollversichert,
 } from './pension.js';
 
 // Persönliche/eingegebene Werte starten bewusst leer (kein Beispiel-Vorausfüllen) –
@@ -19,7 +19,7 @@ const DEFAULTS = {
   nachkaufMonate: 0,
   nachkaufJahre: 5,
   wvAn: true,
-  gfAn: false,
+  gfEinkommen: 0,
   reduktionProzent: 20,
   vergleichAn: false,
   nachkaufAlsEtf: false,
@@ -29,7 +29,7 @@ const DEFAULTS = {
   nachkaufMonateB: 0,
   nachkaufJahreB: 5,
   wvAnB: true,
-  gfAnB: false,
+  gfEinkommenB: 0,
   reduktionProzentB: 20,
 };
 
@@ -51,7 +51,7 @@ const PARAM_KEYS = {
   nachkaufMonate: 'nk',
   nachkaufJahre: 'nj',
   wvAn: 'wv',
-  gfAn: 'gf',
+  gfEinkommen: 'gf',
   reduktionProzent: 'red',
   vergleichAn: 'vgl',
   nachkaufAlsEtf: 'nketf',
@@ -61,11 +61,11 @@ const PARAM_KEYS = {
   nachkaufMonateB: 'nkB',
   nachkaufJahreB: 'njB',
   wvAnB: 'wvB',
-  gfAnB: 'gfB',
+  gfEinkommenB: 'gfB',
   reduktionProzentB: 'redB',
 };
 
-const BOOL_KEYS = new Set(['wvAn', 'vergleichAn', 'wvAnB', 'nachkaufAlsEtf', 'gfAn', 'gfAnB']);
+const BOOL_KEYS = new Set(['wvAn', 'vergleichAn', 'wvAnB', 'nachkaufAlsEtf']);
 const STORAGE_KEY = 'pensionsrechner:eingaben';
 
 const eurFmt = new Intl.NumberFormat('de-AT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
@@ -133,7 +133,7 @@ const els = {
   nachkaufMonate: document.getElementById('nachkaufMonate'),
   nachkaufJahre: document.getElementById('nachkaufJahre'),
   wvAn: document.getElementById('wvAn'),
-  gfAn: document.getElementById('gfAn'),
+  gfEinkommen: document.getElementById('gfEinkommen'),
   reduktionProzent: document.getElementById('reduktionProzent'),
   vergleichAn: document.getElementById('vergleichAn'),
   nachkaufAlsEtf: document.getElementById('nachkaufAlsEtf'),
@@ -143,7 +143,7 @@ const els = {
   nachkaufMonateB: document.getElementById('nachkaufMonateB'),
   nachkaufJahreB: document.getElementById('nachkaufJahreB'),
   wvAnB: document.getElementById('wvAnB'),
-  gfAnB: document.getElementById('gfAnB'),
+  gfEinkommenB: document.getElementById('gfEinkommenB'),
   reduktionProzentB: document.getElementById('reduktionProzentB'),
 };
 
@@ -153,12 +153,14 @@ const outs = {
   antrittsalter: document.getElementById('antrittsalterOut'),
   nachkaufMonate: document.getElementById('nachkaufMonateOut'),
   nachkaufJahre: document.getElementById('nachkaufJahreOut'),
+  gfEinkommen: document.getElementById('gfEinkommenOut'),
   reduktionProzent: document.getElementById('reduktionProzentOut'),
   lebenshaltungB: document.getElementById('lebenshaltungBOut'),
   ausstiegsalterB: document.getElementById('ausstiegsalterBOut'),
   antrittsalterB: document.getElementById('antrittsalterBOut'),
   nachkaufMonateB: document.getElementById('nachkaufMonateBOut'),
   nachkaufJahreB: document.getElementById('nachkaufJahreBOut'),
+  gfEinkommenB: document.getElementById('gfEinkommenBOut'),
   reduktionProzentB: document.getElementById('reduktionProzentBOut'),
 };
 
@@ -180,7 +182,7 @@ function eingabenInFormular() {
   els.nachkaufMonate.value = eingaben.nachkaufMonate;
   els.nachkaufJahre.value = eingaben.nachkaufJahre;
   els.wvAn.checked = eingaben.wvAn;
-  els.gfAn.checked = eingaben.gfAn;
+  els.gfEinkommen.value = eingaben.gfEinkommen;
   els.reduktionProzent.value = eingaben.reduktionProzent;
   els.vergleichAn.checked = eingaben.vergleichAn;
   els.nachkaufAlsEtf.checked = eingaben.nachkaufAlsEtf;
@@ -192,7 +194,7 @@ function eingabenInFormular() {
   els.nachkaufMonateB.value = eingaben.nachkaufMonateB;
   els.nachkaufJahreB.value = eingaben.nachkaufJahreB;
   els.wvAnB.checked = eingaben.wvAnB;
-  els.gfAnB.checked = eingaben.gfAnB;
+  els.gfEinkommenB.value = eingaben.gfEinkommenB;
   els.reduktionProzentB.value = eingaben.reduktionProzentB;
   aktualisiereOutputs();
 }
@@ -216,10 +218,36 @@ function aktualisiereOutputs() {
   document.getElementById('nachkaufJahreBField').classList.toggle('disabled', eingaben.nachkaufMonateB <= 0);
   // Bei Anstellung ueber der Geringfuegigkeitsgrenze besteht Pflichtversicherung –
   // eine freiwillige Weiterversicherung ist daneben nicht vorgesehen.
-  els.wvAn.closest('.field').classList.toggle('disabled', eingaben.gfAn);
-  els.wvAnB.closest('.field').classList.toggle('disabled', eingaben.gfAnB);
+  aktualisiereZuverdienst('', eingaben.gfEinkommen, eingaben.gehalt);
+  aktualisiereZuverdienst('B', eingaben.gfEinkommenB, eingaben.gehalt);
   document.getElementById('szenarioBFieldset').hidden = !eingaben.vergleichAn;
   document.getElementById('uebernehmenButtonA').hidden = !eingaben.vergleichAn;
+}
+
+// Regler "Zuverdienst in der Lücke": Obergrenze ist das aktuelle Monatsbrutto, damit die
+// Skala zum eigenen Fall passt. Unter der Geringfügigkeitsgrenze besteht keine
+// Pflichtversicherung – das wird direkt unter dem Regler ausgewiesen, weil genau dort der
+// Unterschied zwischen "bringt nur Geld" und "bringt auch Versicherungsmonate" liegt.
+function aktualisiereZuverdienst(suffix, wert, gehalt) {
+  const slider = suffix === 'B' ? els.gfEinkommenB : els.gfEinkommen;
+  const out = suffix === 'B' ? outs.gfEinkommenB : outs.gfEinkommen;
+  const skala = document.getElementById(`gfSkala${suffix}`);
+  const max = Math.max(Number(gehalt) || 0, CONST.GERINGFUEGIGKEIT * 2);
+  slider.max = Math.ceil(max / 10) * 10;
+  out.textContent = wert > 0 ? `${eurFmt.format(wert)}/Monat` : 'kein Zuverdienst';
+
+  if (wert <= 0) {
+    skala.innerHTML = `Geringfügigkeitsgrenze bei ${eurFmt2.format(CONST.GERINGFUEGIGKEIT)} – `
+      + 'darüber gibt es Versicherungsmonate und Krankenversicherung.';
+    return;
+  }
+  const netto = nettoErwerbseinkommenJahr(wert);
+  const nettoText = `netto ${eurFmt.format(netto / 12)}/Monat`;
+  skala.innerHTML = istVollversichert(wert)
+    ? `<span class="ueber">✓ über der Geringfügigkeitsgrenze (${eurFmt2.format(CONST.GERINGFUEGIGKEIT)})</span> – `
+      + `vollversichert, ${nettoText}`
+    : `<span class="unter">✗ unter der Geringfügigkeitsgrenze (${eurFmt2.format(CONST.GERINGFUEGIGKEIT)})</span> – `
+      + `keine Versicherungsmonate, keine Krankenversicherung, ${nettoText}`;
 }
 
 function leseZahlfeld(el) {
@@ -241,7 +269,7 @@ function ausFormularLesen() {
     nachkaufMonate: Number(els.nachkaufMonate.value),
     nachkaufJahre: Number(els.nachkaufJahre.value),
     wvAn: els.wvAn.checked,
-    gfAn: els.gfAn.checked,
+    gfEinkommen: Number(els.gfEinkommen.value),
     reduktionProzent: Number(els.reduktionProzent.value),
     vergleichAn: els.vergleichAn.checked,
     nachkaufAlsEtf: els.nachkaufAlsEtf.checked,
@@ -251,7 +279,7 @@ function ausFormularLesen() {
     nachkaufMonateB: Number(els.nachkaufMonateB.value),
     nachkaufJahreB: Number(els.nachkaufJahreB.value),
     wvAnB: els.wvAnB.checked,
-    gfAnB: els.gfAnB.checked,
+    gfEinkommenB: Number(els.gfEinkommenB.value),
     reduktionProzentB: Number(els.reduktionProzentB.value),
   };
 }
@@ -293,7 +321,7 @@ function neuBerechnenUndRendern() {
       nachkaufMonate: eingaben.nachkaufMonateB,
       nachkaufJahre: eingaben.nachkaufJahreB,
       wvAn: eingaben.wvAnB,
-      gfAn: eingaben.gfAnB,
+      gfEinkommen: eingaben.gfEinkommenB,
       reduktionProzent: eingaben.reduktionProzentB,
     };
     const ergebnisB = berechnePensionsszenario(eingabenB);
@@ -760,32 +788,32 @@ const INFO_TEXTE = {
     <br><br>
     Nicht enthalten: dass die Pension lebenslang läuft, ein angespartes Kapital aber endlich ist – der
     Nachkauf ist damit auch eine Absicherung gegen ein langes Leben.`,
-  gfAn: `In der Lücke zwischen Ausstieg und Antritt ein Dienstverhältnis <strong>knapp über</strong> der
-    Geringfügigkeitsgrenze (${eurFmt2.format(CONST.GERINGFUEGIGKEIT)}/Monat) – gerechnet wird mit
-    ${eurFmt2.format(CONST.GF_PLUS_BG)}/Monat.
+  gfEinkommen: `Monatliches Bruttoeinkommen aus einem Dienstverhältnis zwischen Ausstieg und Antritt.
+    Der Regler reicht von 0 bis zu deinem aktuellen Gehalt; die Marke sitzt auf der
+    Geringfügigkeitsgrenze (${eurFmt2.format(CONST.GERINGFUEGIGKEIT)}/Monat).
     <br><br>
-    <strong>Der eine Euro entscheidet:</strong> Genau <em>unter</em> der Grenze ist man nur unfallversichert –
-    keine Versicherungsmonate, keine Krankenversicherung. Erst <em>darüber</em> greift die Vollversicherung.
-    „Geringfügig" im Rechtssinn nützt hier also gar nichts.
+    <strong>Die Grenze ist die entscheidende Schwelle:</strong>
+    <br>• <em>Darunter</em> ist man nur unfallversichert. Das Geld senkt zwar den Kapitalbedarf, bringt aber
+    <strong>keine</strong> Versicherungsmonate und <strong>keine</strong> Krankenversicherung – die
+    KV-Selbstversicherung (${eurFmt.format(CONST.KV_SELBST_MONAT * 12)}/Jahr) läuft weiter.
+    <br>• <em>Darüber</em> greift die Vollversicherung: Die Lückenmonate zählen für die
+    ${CONST.KORRIDOR_MONATE} Monate der Korridorpension, die KV-Selbstversicherung entfällt, und es entsteht
+    Pensionsgutschrift.
     <br><br>
-    Drei Effekte, alle im Ergebnis berücksichtigt:
-    <br>• Die Lückenmonate zählen als Versicherungsmonate (relevant für die ${CONST.KORRIDOR_MONATE} Monate
-    der Korridorpension) – deutlich billiger als Nachkauf: rund
-    ${eurFmt2.format(CONST.GF_PLUS_BG * 0.1025)} Dienstnehmeranteil pro Monat statt
-    ${eurFmt.format(CONST.NK_KOSTEN_MONAT)}.
-    <br>• Die KV-Selbstversicherung (${eurFmt.format(CONST.KV_SELBST_MONAT * 12)}/Jahr) entfällt.
-    <br>• Das Einkommen mindert den Kapitalbedarf: netto rund
-    ${eurFmt2.format(CONST.GF_PLUS_BG * 14 * (1 - CONST.GF_SV_DN_SATZ) / 12)} pro Monat, also
-    ${eurFmt.format(CONST.GF_PLUS_BG * 14 * (1 - CONST.GF_SV_DN_SATZ))} im Jahr. Lohnsteuer fällt auf diesem
-    Niveau keine an (weit unter dem Steuerfreibetrag), und der Dienstnehmeranteil beträgt nur
-    ${(CONST.GF_SV_DN_SATZ * 100).toFixed(2)} % statt der üblichen ${(CONST.SV_DN_SATZ * 100).toFixed(2)} % –
-    der Arbeitslosenbeitrag entfällt bis 2.225 €/Monat (Einschleifregelung).
+    Schon ein Euro über der Grenze genügt für den vollen Versicherungsschutz – und ist der mit Abstand
+    billigste Weg zu Versicherungsmonaten: rund ${eurFmt2.format(CONST.GF_PLUS_BG * 0.1025)}
+    Dienstnehmeranteil pro Monat statt ${eurFmt.format(CONST.NK_KOSTEN_MONAT)} beim Nachkauf.
     <br><br>
-    Die Gutschrift bleibt naturgemäß klein (${eurFmt2.format(CONST.KONTOPROZENTSATZ * CONST.GF_PLUS_BG * 14)}/Jahr) –
-    es geht um Monate und Versicherungsschutz, nicht um Pensionshöhe.
+    <strong>Kuriosität an der Schwelle:</strong> Knapp darunter bleibt netto mehr übrig als knapp darüber,
+    weil ab der Grenze der Dienstnehmerbeitrag einsetzt. Wer die Versicherungsmonate will, nimmt diesen Knick
+    bewusst in Kauf.
+    <br><br>
+    Vom Brutto gehen Sozialversicherung und Lohnsteuer ab. Der Dienstnehmersatz steigt gestaffelt von
+    ${(CONST.GF_SV_DN_SATZ * 100).toFixed(2)} % (Arbeitslosenbeitrag 0 % bis 2.225 €) auf
+    ${(CONST.SV_DN_SATZ * 100).toFixed(2)} % ab 2.630 € – Einschleifregelung nach § 2a AMPFG.
     <br><br>
     <strong>Achtung:</strong> Am Stichtag der Korridorpension selbst darf kein Erwerbseinkommen über der
-    Geringfügigkeitsgrenze bestehen – das Dienstverhältnis muss also bis dahin beendet oder reduziert sein.`,
+    Geringfügigkeitsgrenze bestehen – das Dienstverhältnis muss bis dahin beendet oder reduziert sein.`,
   reduktionProzent: `Was kostet eine Reduktion der Arbeitszeit an <strong>monatlicher Pension</strong>?
     Gerechnet wird mit entsprechend geringerem Bruttogehalt für die noch offenen Erwerbsmonate
     (Gutschrift-Stichtag bis Ausstieg). Bereits erworbene Kontogutschrift, Nachkauf und

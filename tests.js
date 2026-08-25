@@ -4,6 +4,7 @@ import {
   CONST, tarif, monateZwischen, stichtagPension, ausstiegsdatum,
   berechnePensionsszenario, addMonths, breakEvenPunkt, regelpensionsalter,
   amortisationEinMonat, wvAmortisation, entnahmedauerJahre, stundenreduzierungEffekt,
+  svSatzDienstnehmer, istVollversichert, nettoErwerbseinkommenJahr,
 } from './pension.js';
 
 // Referenzperson: geb. 24.02.1983, Konto 22.812 € per 01.01.2026, 203 VM per Stichtag,
@@ -464,26 +465,26 @@ test('stundenreduzierungEffekt: große Reduktion unter die HBGl wirkt nur anteil
     `wirksam=${s.wirksameReduktionProzent}`);
 });
 
-test('gfAn: Lückenmonate zählen als Versicherungsmonate (wie Weiterversicherung)', () => {
+test('gfEinkommen: Lückenmonate zählen als Versicherungsmonate (wie Weiterversicherung)', () => {
   const b = { ...basis, ausstiegsalter: 60, antrittsalter: 63, nachkaufMonate: 0 };
-  const ohne = berechnePensionsszenario({ ...b, wvAn: false, gfAn: false });
-  const mit = berechnePensionsszenario({ ...b, wvAn: false, gfAn: true });
+  const ohne = berechnePensionsszenario({ ...b, wvAn: false, gfEinkommen: 0 });
+  const mit = berechnePensionsszenario({ ...b, wvAn: false, gfEinkommen: 600 });
   assert.equal(mit.monate.vmOhneNachkauf - ohne.monate.vmOhneNachkauf, ohne.monate.lueckenmonate);
 });
 
-test('gfAn: keine Doppelzählung, wenn zusätzlich Weiterversicherung an ist', () => {
+test('gfEinkommen: keine Doppelzählung, wenn zusätzlich Weiterversicherung an ist', () => {
   const b = { ...basis, ausstiegsalter: 60, antrittsalter: 63, nachkaufMonate: 0 };
-  const nurWv = berechnePensionsszenario({ ...b, wvAn: true, gfAn: false });
-  const beides = berechnePensionsszenario({ ...b, wvAn: true, gfAn: true });
+  const nurWv = berechnePensionsszenario({ ...b, wvAn: true, gfEinkommen: 0 });
+  const beides = berechnePensionsszenario({ ...b, wvAn: true, gfEinkommen: 600 });
   assert.equal(beides.monate.vmOhneNachkauf, nurWv.monate.vmOhneNachkauf);
 });
 
-test('gfAn: KV-Selbstversicherung entfällt und Einkommen mindert den Kapitalbedarf', () => {
+test('gfEinkommen: KV-Selbstversicherung entfällt und Einkommen mindert den Kapitalbedarf', () => {
   const b = {
     ...basis, ausstiegsalter: 60, antrittsalter: 63, nachkaufMonate: 0, lebenshaltung: 2000,
   };
-  const ohne = berechnePensionsszenario({ ...b, wvAn: false, gfAn: false });
-  const mit = berechnePensionsszenario({ ...b, wvAn: false, gfAn: true });
+  const ohne = berechnePensionsszenario({ ...b, wvAn: false, gfEinkommen: 0 });
+  const mit = berechnePensionsszenario({ ...b, wvAn: false, gfEinkommen: 600 });
   assert.ok(Math.abs(ohne.kapital.svJahr - CONST.KV_SELBST_MONAT * 12) < 1e-9);
   assert.equal(mit.kapital.svJahr, 0, 'KV-Selbstversicherung muss entfallen');
   assert.ok(mit.kapital.nettoEinkommenJahr > 0, 'Erwerbseinkommen muss angesetzt werden');
@@ -491,33 +492,83 @@ test('gfAn: KV-Selbstversicherung entfällt und Einkommen mindert den Kapitalbed
   assert.ok(mit.kapital.kapitalPuffer < ohne.kapital.kapitalPuffer, 'Kapitalbedarf muss sinken');
 });
 
-test('gfAn: Gutschrift steigt, bleibt aber klein', () => {
+test('gfEinkommen: Gutschrift steigt, bleibt aber klein', () => {
   const b = { ...basis, ausstiegsalter: 60, antrittsalter: 63, nachkaufMonate: 0, wvAn: false };
-  const ohne = berechnePensionsszenario({ ...b, gfAn: false });
-  const mit = berechnePensionsszenario({ ...b, gfAn: true });
+  const ohne = berechnePensionsszenario({ ...b, gfEinkommen: 0 });
+  const mit = berechnePensionsszenario({ ...b, gfEinkommen: 600 });
   assert.ok(mit.gutschrift > ohne.gutschrift);
   // Beitragsgrundlage ist die Geringfügigkeitsgrenze + 1 EUR, inkl. Sonderzahlungen
-  const erwartet = (ohne.monate.lueckenmonate / 12) * CONST.KONTOPROZENTSATZ * CONST.GF_PLUS_BG * 14;
+  const erwartet = (ohne.monate.lueckenmonate / 12) * CONST.KONTOPROZENTSATZ * 600 * 14;
   assert.ok(Math.abs(mit.gutschrift - ohne.gutschrift - erwartet) < 1e-6);
 });
 
-test('gfAn: Kapitalbedarf wird nie negativ', () => {
+test('gfEinkommen: Kapitalbedarf wird nie negativ', () => {
   const r = berechnePensionsszenario({
     ...basis, ausstiegsalter: 60, antrittsalter: 63, nachkaufMonate: 0,
-    wvAn: false, gfAn: true, lebenshaltung: 100,
+    wvAn: false, gfEinkommen: 600, lebenshaltung: 100,
   });
   assert.ok(r.kapital.kapital >= 0, `kapital=${r.kapital.kapital}`);
 });
 
-test('gfAn: Nettoeinkommen nutzt den reduzierten SV-Satz (AlV-Einschleifregelung)', () => {
+test('gfEinkommen: Nettoeinkommen nutzt den reduzierten SV-Satz (AlV-Einschleifregelung)', () => {
   const r = berechnePensionsszenario({
-    ...basis, ausstiegsalter: 60, antrittsalter: 63, nachkaufMonate: 0, wvAn: false, gfAn: true,
+    ...basis, ausstiegsalter: 60, antrittsalter: 63, nachkaufMonate: 0, wvAn: false, gfEinkommen: 600,
   });
   // 15,12 % statt 18,07 %: der Arbeitslosenbeitrag entfällt bis 2.225 EUR/Monat
   assert.ok(Math.abs(CONST.GF_SV_DN_SATZ - 0.1512) < 1e-9);
   assert.ok(CONST.GF_SV_DN_SATZ < CONST.SV_DN_SATZ);
-  const erwartet = CONST.GF_PLUS_BG * 14 * (1 - CONST.GF_SV_DN_SATZ);
-  assert.ok(Math.abs(r.kapital.nettoEinkommenJahr - erwartet) < 1e-9);
+  assert.ok(Math.abs(r.kapital.nettoEinkommenJahr - nettoErwerbseinkommenJahr(600)) < 1e-9);
+});
+
+test('svSatzDienstnehmer: 0 bis zur Geringfügigkeitsgrenze, dann gestaffelt (§ 2a AMPFG)', () => {
+  assert.equal(svSatzDienstnehmer(400), 0);
+  assert.equal(svSatzDienstnehmer(CONST.GERINGFUEGIGKEIT), 0, 'genau auf der Grenze noch beitragsfrei');
+  assert.ok(Math.abs(svSatzDienstnehmer(600) - 0.1512) < 1e-9);
+  assert.ok(Math.abs(svSatzDienstnehmer(2225) - 0.1512) < 1e-9);
+  assert.ok(Math.abs(svSatzDienstnehmer(2300) - 0.1612) < 1e-9);
+  assert.ok(Math.abs(svSatzDienstnehmer(2500) - 0.1712) < 1e-9);
+  assert.ok(Math.abs(svSatzDienstnehmer(3000) - CONST.SV_DN_SATZ) < 1e-9);
+});
+
+test('istVollversichert: erst über der Grenze, nicht auf ihr', () => {
+  assert.equal(istVollversichert(CONST.GERINGFUEGIGKEIT), false);
+  assert.equal(istVollversichert(CONST.GERINGFUEGIGKEIT + 1), true);
+  assert.equal(istVollversichert(0), false);
+});
+
+test('Zuverdienst: unter der Grenze kein Versicherungsschutz, aber Einkommen zählt', () => {
+  const b = {
+    ...basis, ausstiegsalter: 60, antrittsalter: 63, nachkaufMonate: 0, wvAn: false, lebenshaltung: 2000,
+  };
+  const ohne = berechnePensionsszenario({ ...b, gfEinkommen: 0 });
+  const unter = berechnePensionsszenario({ ...b, gfEinkommen: 400 });
+  // Keine Vollversicherung -> KV-Selbstversicherung läuft weiter, keine Versicherungsmonate
+  assert.equal(unter.kapital.vollversichert, false);
+  assert.equal(unter.kapital.svJahr, ohne.kapital.svJahr);
+  assert.equal(unter.monate.vmOhneNachkauf, ohne.monate.vmOhneNachkauf);
+  assert.equal(unter.gutschrift, ohne.gutschrift, 'keine Gutschrift unter der Grenze');
+  // Das Einkommen mindert aber den Kapitalbedarf, und es fällt keine SV an
+  assert.equal(unter.kapital.nettoEinkommenJahr, 400 * 14);
+  assert.ok(unter.kapital.kapitalPuffer < ohne.kapital.kapitalPuffer);
+});
+
+test('Zuverdienst: die Geringfügigkeitsfalle – knapp darunter bleibt netto mehr', () => {
+  const knappDrunter = nettoErwerbseinkommenJahr(CONST.GERINGFUEGIGKEIT);
+  const knappDrueber = nettoErwerbseinkommenJahr(CONST.GERINGFUEGIGKEIT + 1);
+  assert.ok(knappDrueber < knappDrunter, 'ab der Grenze setzt der Dienstnehmerbeitrag ein');
+});
+
+test('Zuverdienst: höheres Einkommen bringt mehr Gutschrift, gedeckelt bei der HBGl', () => {
+  const b = {
+    ...basis, ausstiegsalter: 60, antrittsalter: 63, nachkaufMonate: 0, wvAn: false,
+  };
+  const klein = berechnePensionsszenario({ ...b, gfEinkommen: 600 });
+  const gross = berechnePensionsszenario({ ...b, gfEinkommen: 3000 });
+  assert.ok(gross.gutschrift > klein.gutschrift);
+  // Über der HBGl wächst die Gutschrift nicht weiter
+  const hoch = berechnePensionsszenario({ ...b, gfEinkommen: CONST.HBGL_MONAT });
+  const nochHoeher = berechnePensionsszenario({ ...b, gfEinkommen: CONST.HBGL_MONAT * 2 });
+  assert.ok(Math.abs(hoch.gutschrift - nochHoeher.gutschrift) < 1e-6);
 });
 
 test('berechnePensionsszenario liefert amortisation + wvVergleich', () => {

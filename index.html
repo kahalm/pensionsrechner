@@ -84,11 +84,12 @@
           <input type="range" id="lebenshaltung" min="1000" max="6000" step="100">
         </label>
 
-        <label class="field toggle-field">
-          <input type="checkbox" id="gfAn">
-          <span>Bis zum Antritt geringfügig + 1 € arbeiten
-            <button type="button" class="info-icon" data-info="gfAn" aria-label="Info: Warum ein Euro darüber?">i</button>
+        <label class="field slider-field">
+          <span>Zuverdienst in der Lücke: <output id="gfEinkommenOut"></output>
+            <button type="button" class="info-icon" data-info="gfEinkommen" aria-label="Info: Geringfügigkeitsgrenze">i</button>
           </span>
+          <input type="range" id="gfEinkommen" min="0" max="3000" step="10" list="gfMarks">
+          <span class="skala" id="gfSkala"></span>
         </label>
 
         <label class="field slider-field">
@@ -140,11 +141,12 @@
           <input type="range" id="lebenshaltungB" min="1000" max="6000" step="100">
         </label>
 
-        <label class="field toggle-field">
-          <input type="checkbox" id="gfAnB">
-          <span>Bis zum Antritt geringfügig + 1 € arbeiten
-            <button type="button" class="info-icon" data-info="gfAn" aria-label="Info: Warum ein Euro darüber?">i</button>
+        <label class="field slider-field">
+          <span>Zuverdienst in der Lücke: <output id="gfEinkommenBOut"></output>
+            <button type="button" class="info-icon" data-info="gfEinkommen" aria-label="Info: Geringfügigkeitsgrenze">i</button>
           </span>
+          <input type="range" id="gfEinkommenB" min="0" max="3000" step="10" list="gfMarks">
+          <span class="skala" id="gfSkalaB"></span>
         </label>
 
         <label class="field slider-field">
@@ -186,6 +188,9 @@
         </label>
       </fieldset>
     </div>
+    <datalist id="gfMarks">
+      <option value="550" label="Geringfügigkeitsgrenze"></option>
+    </datalist>
   </form>
 
   <div class="ergebnis-spalten">

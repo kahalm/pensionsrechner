@@ -45,6 +45,9 @@ export const CONST = {
   SV_DN_SATZ: 0.1807,
   SZ_FREIBETRAG: 620,
   SZ_STEUERSATZ: 0.06,
+  // Freigrenze fuer sonstige Bezuege (Paragraf 67 EStG), Wert 2026: bleibt das
+  // Jahressechstel darunter, entfaellt die Besteuerung der Sonderzahlungen ganz.
+  SZ_FREIGRENZE: 2615,
   KV_PENSION: 0.06,
   NETTO_KALIBRIERUNG: 0.973,
 
@@ -65,11 +68,19 @@ CONST.NK_GUTSCHRIFT_MONAT = (CONST.NK_KOSTEN_MONAT / CONST.WV_SATZ) * CONST.KONT
 // bekommen -- der Nutzen entsteht erst mit dem einen Euro darueber (Vollversicherung).
 CONST.GF_PLUS_BG = CONST.GERINGFUEGIGKEIT + 1;
 
-// Dienstnehmeranteil auf diesem Einkommensniveau: KV 3,87 + PV 10,25 + AK-Umlage 0,5 +
-// Wohnbaufoerderung 0,5 = 15,12 %. Der Arbeitslosenbeitrag entfaellt: die
-// Einschleifregelung (Paragraf 2a AMPFG) setzt ihn bis 2.225 EUR/Monat auf 0 % -- deshalb
-// NICHT der allgemeine Satz SV_DN_SATZ (18,07 %), der erst ab 2.630 EUR gilt.
+// Dienstnehmeranteil ohne Arbeitslosenversicherung: KV 3,87 + PV 10,25 + AK-Umlage 0,5 +
+// Wohnbaufoerderung 0,5 = 15,12 %. Der AlV-Beitrag kommt je nach Einkommen dazu (siehe
+// ALV_STUFEN): die Einschleifregelung (Paragraf 2a AMPFG) staffelt ihn von 0 % bis 2,95 %.
 CONST.GF_SV_DN_SATZ = 0.0387 + 0.1025 + 0.005 + 0.005;
+
+// Einschleifregelung Arbeitslosenversicherung, Dienstnehmeranteil (Paragraf 2a AMPFG),
+// Werte 2026: bis zur jeweiligen Monatsgrenze gilt der zugehoerige Satz.
+CONST.ALV_STUFEN = [
+  { bis: 2225, satz: 0 },
+  { bis: 2427, satz: 0.01 },
+  { bis: 2630, satz: 0.02 },
+  { bis: Infinity, satz: 0.0295 },
+];
 
 export function clamp(x, lo, hi) {
   return Math.min(Math.max(x, lo), hi);
@@ -134,8 +145,40 @@ export function regelpensionsalter(geschlecht, geburtsdatum) {
   return CONST.REGELPENSIONSALTER;
 }
 
+// Dienstnehmeranteil an der Sozialversicherung, abhaengig vom Monatsbrutto.
+// Bis zur Geringfuegigkeitsgrenze besteht keine Pflichtversicherung -- dann faellt gar
+// kein Dienstnehmerbeitrag an (nur der Dienstgeber zahlt Unfallversicherung).
+export function svSatzDienstnehmer(bruttoMonat) {
+  if (bruttoMonat <= CONST.GERINGFUEGIGKEIT) return 0;
+  const alv = CONST.ALV_STUFEN.find((s) => bruttoMonat <= s.bis).satz;
+  return CONST.GF_SV_DN_SATZ + alv;
+}
+
+// Ab wann besteht Vollversicherung (Kranken- UND Pensionsversicherung)? Genau ueber der
+// Geringfuegigkeitsgrenze -- darunter ist man nur unfallversichert.
+export function istVollversichert(bruttoMonat) {
+  return bruttoMonat > CONST.GERINGFUEGIGKEIT;
+}
+
+// Jahresnetto aus einem Dienstverhaeltnis: 14 Bezuege, davon SV und Lohnsteuer.
+// Sonderzahlungen werden wie im Pensionsteil mit dem festen Satz nach Freibetrag besteuert.
+export function nettoErwerbseinkommenJahr(bruttoMonat) {
+  if (bruttoMonat <= 0) return 0;
+  const satz = svSatzDienstnehmer(bruttoMonat);
+  const lauf = bruttoMonat * 12;
+  const sz = bruttoMonat * 2;
+  const svLauf = satz * Math.min(lauf, CONST.HBGL_MONAT * 12);
+  const svSz = satz * Math.min(sz, CONST.HBGL_JAHR - CONST.HBGL_MONAT * 12);
+  const lst = tarif(lauf - svLauf);
+  // Freigrenze: bleiben die sonstigen Bezuege darunter, sind sie zur Gaenze steuerfrei.
+  const lstSz = sz <= CONST.SZ_FREIGRENZE
+    ? 0
+    : Math.max(0, (sz - svSz) - CONST.SZ_FREIBETRAG) * CONST.SZ_STEUERSATZ;
+  return lauf + sz - svLauf - svSz - lst - lstSz;
+}
+
 export function versicherungsmonate({
-  geburtsdatum, kontoStichtag, vmStart, antrittsalter, ausstiegsalter, wvAn, gfAn = false,
+  geburtsdatum, kontoStichtag, vmStart, antrittsalter, ausstiegsalter, wvAn, gfEinkommen = 0,
   nachkaufMonate = 0, nkMaxMonate = CONST.NK_MAX_MONATE,
 }) {
   const ausstieg = ausstiegsdatum(geburtsdatum, ausstiegsalter);
@@ -143,9 +186,9 @@ export function versicherungsmonate({
   const arbeitsmonate = Math.max(0, monateZwischen(kontoStichtag, ausstieg));
   const lueckenmonate = Math.max(0, monateZwischen(ausstieg, stichtagP));
   // Die Lueckenmonate zaehlen als Versicherungsmonate, wenn entweder freiwillig
-  // weiterversichert ODER knapp ueber der Geringfuegigkeitsgrenze angestellt (dann
-  // besteht Pflichtversicherung). gfAn hat Vorrang, doppelt zaehlen darf es nicht.
-  const lueckeZaehlt = gfAn || wvAn;
+  // weiterversichert ODER ueber der Geringfuegigkeitsgrenze angestellt (dann besteht
+  // Pflichtversicherung). Beides zusammen zaehlt trotzdem nur einmal.
+  const lueckeZaehlt = istVollversichert(gfEinkommen) || wvAn;
   const vmOhneNachkauf = vmStart + arbeitsmonate + (lueckeZaehlt ? lueckenmonate : 0);
   // nachkaufMonate ist ein direkter Nutzerwert (Slider 0..nkMaxMonate) – kein
   // automatisches Auffüllen mehr hier; das übernimmt die UI interaktiv.
@@ -162,14 +205,14 @@ export function versicherungsmonate({
 }
 
 export function gutschriftBeiAntritt({
-  konto, gehalt, arbeitsmonate, lueckenmonate, wvAn, gfAn = false, nkMonate,
+  konto, gehalt, arbeitsmonate, lueckenmonate, wvAn, gfEinkommen = 0, nkMonate,
 }) {
   const jg = jahresgutschrift(gehalt);
   let g = konto + (arbeitsmonate / 12) * jg;
-  if (gfAn) {
-    // Anstellung knapp ueber der Geringfuegigkeitsgrenze: Gutschrift wie bei jedem
-    // Dienstverhaeltnis (inkl. Sonderzahlungen), aber auf niedrigem Niveau.
-    g += (lueckenmonate / 12) * jahresgutschrift(CONST.GF_PLUS_BG);
+  if (istVollversichert(gfEinkommen)) {
+    // Anstellung ueber der Geringfuegigkeitsgrenze: Gutschrift wie bei jedem
+    // Dienstverhaeltnis, inkl. Sonderzahlungen und gedeckelt bei der HBGl.
+    g += (lueckenmonate / 12) * jahresgutschrift(gfEinkommen);
   } else if (wvAn) {
     g += (lueckenmonate / 12) * CONST.KONTOPROZENTSATZ * CONST.WV_BG_MIN * 12;
   }
@@ -259,21 +302,22 @@ export function nachkaufSteuereffekt({
   };
 }
 
-export function kapitalbedarf({ lueckenmonate, lebenshaltung, wvAn, gfAn = false }) {
-  // Bei Anstellung knapp ueber der Geringfuegigkeitsgrenze besteht Pflichtversicherung:
-  // die KV-Selbstversicherung entfaellt, eine freiwillige PV-Weiterversicherung ist
-  // daneben weder noetig noch vorgesehen.
-  const svJahr = gfAn
+export function kapitalbedarf({ lueckenmonate, lebenshaltung, wvAn, gfEinkommen = 0 }) {
+  // Ueber der Geringfuegigkeitsgrenze besteht Pflichtversicherung: die
+  // KV-Selbstversicherung entfaellt, eine freiwillige PV-Weiterversicherung ist daneben
+  // weder noetig noch vorgesehen. Darunter bleibt beides bestehen -- ein geringfuegiges
+  // Einkommen bringt zwar Geld, aber keinen Versicherungsschutz.
+  const vollversichert = istVollversichert(gfEinkommen);
+  const svJahr = vollversichert
     ? 0
     : CONST.KV_SELBST_MONAT * 12 + (wvAn ? CONST.WV_BG_MIN * CONST.WV_SATZ * 12 : 0);
-  // Das Erwerbseinkommen in der Luecke mindert den Kapitalbedarf. Lohnsteuer faellt bei
-  // diesem Niveau keine an (weit unter dem Steuerfreibetrag), nur SV-Dienstnehmeranteil.
-  const nettoEinkommenJahr = gfAn
-    ? CONST.GF_PLUS_BG * 14 * (1 - CONST.GF_SV_DN_SATZ)
-    : 0;
+  // Das Erwerbseinkommen in der Luecke mindert den Kapitalbedarf.
+  const nettoEinkommenJahr = nettoErwerbseinkommenJahr(gfEinkommen);
   const bedarfProJahr = Math.max(0, lebenshaltung * 12 + svJahr - nettoEinkommenJahr);
   const kapital = (lueckenmonate / 12) * bedarfProJahr;
-  return { svJahr, nettoEinkommenJahr, kapital, kapitalPuffer: kapital * 1.15 };
+  return {
+    svJahr, nettoEinkommenJahr, vollversichert, kapital, kapitalPuffer: kapital * 1.15,
+  };
 }
 
 // "gelb" nur, wenn der Nachkauf für den Anspruch tatsächlich nötig war – also unterhalb
@@ -418,7 +462,7 @@ export function berechnePensionsszenario(eingaben) {
     arbeitsmonate: monate.arbeitsmonate,
     lueckenmonate: monate.lueckenmonate,
     wvAn: eingaben.wvAn,
-    gfAn: eingaben.gfAn,
+    gfEinkommen: eingaben.gfEinkommen,
     nkMonate: monate.nkMonate,
   });
   const anspruch = anspruchUndBrutto({
@@ -433,7 +477,7 @@ export function berechnePensionsszenario(eingaben) {
     lueckenmonate: monate.lueckenmonate,
     lebenshaltung: eingaben.lebenshaltung,
     wvAn: eingaben.wvAn,
-    gfAn: eingaben.gfAn,
+    gfEinkommen: eingaben.gfEinkommen,
   });
   const amortisation = amortisationEinMonat({
     abschlag: anspruch.abschlag,

@@ -542,3 +542,14 @@ table td {
 .quellen-liste a {
   color: var(--accent);
 }
+
+/* Kleine Skalenbeschriftung unter dem Zuverdienst-Regler: zeigt, wo die
+   Geringfuegigkeitsgrenze liegt und was sie bedeutet. */
+.skala {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: -0.1rem;
+}
+
+.skala .unter { color: var(--negative); }
+.skala .ueber { color: var(--positive); }
