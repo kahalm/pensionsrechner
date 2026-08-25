@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="de-AT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pensionsrechner Österreich – Gedankenspiel Frühpension</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="page-header">
+  <h1>Pensionsrechner Österreich</h1>
+  <p class="subtitle">Gedankenspiel Frühpension &ndash; APG-Pensionskonto, Korridorpension &amp; Überbrückung</p>
+</header>
+
+<main>
+  <form id="form" novalidate>
+    <fieldset class="grid">
+      <legend>Persönliche Daten</legend>
+
+      <label class="field">
+        <span>Geburtsdatum</span>
+        <input type="date" id="geburtsdatum" min="1955-01-01" max="2005-12-31" required>
+      </label>
+
+      <label class="field">
+        <span>Pensionskonto-Gutschrift (€)</span>
+        <input type="number" id="konto" min="0" step="1" required>
+      </label>
+
+      <label class="field">
+        <span>Gutschrift-Stichtag</span>
+        <input type="date" id="kontoStichtag" required>
+      </label>
+
+      <label class="field">
+        <span>Versicherungsmonate per Stichtag</span>
+        <input type="number" id="vmStart" min="0" max="600" step="1" required>
+      </label>
+
+      <label class="field">
+        <span>Bruttogehalt/Monat, ×14 (€)</span>
+        <input type="number" id="gehalt" min="0" step="10" required>
+      </label>
+    </fieldset>
+
+    <fieldset class="grid">
+      <legend>Szenario</legend>
+
+      <label class="field slider-field">
+        <span>Lebenshaltung netto/Monat <output id="lebenshaltungOut"></output></span>
+        <input type="range" id="lebenshaltung" min="1000" max="6000" step="100">
+      </label>
+
+      <label class="field slider-field">
+        <span>Ausstiegsalter <output id="ausstiegsalterOut"></output></span>
+        <input type="range" id="ausstiegsalter" min="55" max="68" step="1">
+      </label>
+
+      <label class="field slider-field">
+        <span>Pensionsantrittsalter <output id="antrittsalterOut"></output></span>
+        <input type="range" id="antrittsalter" min="60" max="68" step="1">
+      </label>
+
+      <label class="field toggle-field">
+        <input type="checkbox" id="nachkaufAn">
+        <span>Nachkauf Schul-/Studienzeiten</span>
+      </label>
+
+      <label class="field slider-field" id="nachkaufJahreField">
+        <span>Nachkauf verteilt über <output id="nachkaufJahreOut"></output> Jahre</span>
+        <input type="range" id="nachkaufJahre" min="1" max="10" step="1">
+      </label>
+
+      <label class="field toggle-field">
+        <input type="checkbox" id="wvAn">
+        <span>Mindest-Weiterversicherung in der Lücke</span>
+      </label>
+    </fieldset>
+  </form>
+
+  <section id="statusline" class="statusline" role="status"></section>
+
+  <section class="cards" aria-label="Kennzahlen">
+    <div class="card">
+      <h2>Pension brutto <small>(×14)</small></h2>
+      <p class="card-value" id="cardBrutto">–</p>
+    </div>
+    <div class="card">
+      <h2>Pension netto <small>ca.</small></h2>
+      <p class="card-value" id="cardNetto">–</p>
+    </div>
+    <div class="card">
+      <h2>Differenz zur Lebenshaltung</h2>
+      <p class="card-value" id="cardDifferenz">–</p>
+    </div>
+    <div class="card">
+      <h2>Kapitalbedarf am Ausstieg</h2>
+      <p class="card-value" id="cardKapital">–</p>
+    </div>
+  </section>
+
+  <section class="box" id="nachkaufBox" hidden>
+    <h2>Nachkauf: Kosten &amp; Steuereffekt</h2>
+    <dl class="kv-list">
+      <div><dt>Gekaufte Monate</dt><dd id="nkMonate">–</dd></div>
+      <div><dt>Kosten voll</dt><dd id="nkKostenVoll">–</dd></div>
+      <div><dt>Steuerersparnis</dt><dd id="nkErsparnis" class="positive">–</dd></div>
+      <div><dt>Kosten nach Steuer</dt><dd id="nkKostenNetto">–</dd></div>
+      <div><dt>Effektiver Satz</dt><dd id="nkEffSatz">–</dd></div>
+      <div><dt>Rate pro Jahr</dt><dd id="nkRate">–</dd></div>
+    </dl>
+    <p class="hint">Der Sonderausgabenabzug greift im Jahr der Zahlung. Gestaffelte Teilanträge bzw. Ratenzahlung vorab mit der PV klären.</p>
+  </section>
+
+  <section class="box">
+    <h2>Details</h2>
+    <div class="table-scroll">
+      <table id="detailTable">
+        <tbody>
+          <tr><th>Versicherungsmonate am Stichtag</th><td id="dVm">–</td></tr>
+          <tr><th>davon Nachkaufmonate</th><td id="dNk">–</td></tr>
+          <tr><th>Gutschrift bei Antritt</th><td id="dGutschrift">–</td></tr>
+          <tr><th>Abschlag / Zuschlag</th><td id="dAbschlagZuschlag">–</td></tr>
+          <tr><th>SV-Kosten pro Lückenjahr</th><td id="dSvJahr">–</td></tr>
+          <tr><th>Kapitalbedarf inkl. Puffer (+15 %)</th><td id="dKapitalPuffer">–</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="hint">Nachkaufkosten sind im Kapitalbedarf <strong>nicht</strong> enthalten – sie sollten idealerweise vor dem Ausstieg aus laufendem Einkommen finanziert werden.</p>
+  </section>
+
+  <section class="box">
+    <h2>Vergleich nach Antrittsalter</h2>
+    <div id="chart" class="chart" aria-label="Balkendiagramm Pension brutto nach Antrittsalter"></div>
+  </section>
+</main>
+
+<footer class="page-footer">
+  <p>Gedankenspiel auf Basis der Rechtslage und SV-Werte <span id="footerJahr"></span>, heutiger Geldwert, ohne Gewähr. Keine Rechts-/Steuerberatung. Verbindlich ist nur die Auskunft der Pensionsversicherung.</p>
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
