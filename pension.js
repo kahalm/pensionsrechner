@@ -238,3 +238,59 @@ export function vergleichsdiagramm(eingaben, alterListe = [63, 64, 65, 66, 67, 6
     return { alter, bruttoMonat: r.ok ? r.bruttoMonat : null, ok: r.ok };
   });
 }
+
+export function addMonths(datum, monate) {
+  const d = toDate(datum);
+  return new Date(d.getFullYear(), d.getMonth() + monate, d.getDate());
+}
+
+function szenarioSegment(ergebnis, geburtsdatum) {
+  return {
+    ausstiegM: monateZwischen(geburtsdatum, ergebnis.monate.ausstieg),
+    antrittM: monateZwischen(geburtsdatum, ergebnis.monate.stichtagPension),
+    kosten: ergebnis.kapital.kapitalPuffer + ergebnis.nachkauf.kostenNetto,
+    pensionProMonat: ergebnis.nettoMonat,
+  };
+}
+
+// Kumulierte Netto-Position (−Kosten, dann +Pension ab Antritt) als stückweise
+// lineare Funktion des Alters (in Monaten) – 0 vor dem Ausstieg.
+function segmentWert(segment, alterMonate) {
+  if (alterMonate < segment.ausstiegM) return 0;
+  if (alterMonate < segment.antrittM) return -segment.kosten;
+  return -segment.kosten + segment.pensionProMonat * (alterMonate - segment.antrittM);
+}
+
+// Schnittpunkt der kumulierten Positionen zweier Szenarien: ab welchem Alter hat das
+// Szenario mit höheren Anfangskosten (Kapitalbedarf + Nachkauf-Kosten netto) durch die
+// seit seinem eigenen Antritt bezogene Nettopension gegenüber dem anderen aufgeholt.
+// Vereinfachung wie im restlichen Rechner: keine Verzinsung, heutiger Geldwert.
+export function breakEvenPunkt({ geburtsdatum, ergebnisA, ergebnisB }) {
+  if (!ergebnisA.ok || !ergebnisB.ok) return null;
+  const segA = szenarioSegment(ergebnisA, geburtsdatum);
+  const segB = szenarioSegment(ergebnisB, geburtsdatum);
+  const breakpoints = [...new Set([segA.ausstiegM, segA.antrittM, segB.ausstiegM, segB.antrittM])]
+    .sort((a, b) => a - b);
+  const horizont = Math.max(segA.antrittM, segB.antrittM) + 480;
+  const punkte = [...breakpoints, horizont];
+  const diff = (m) => segmentWert(segA, m) - segmentWert(segB, m);
+
+  for (let i = 0; i < punkte.length - 1; i++) {
+    const m0 = punkte[i];
+    const m1 = punkte[i + 1];
+    const d0 = diff(m0);
+    const d1 = diff(m1);
+    if (Math.abs(d0) < 0.005) {
+      return { alterMonate: Math.round(m0), gefunden: true };
+    }
+    if ((d0 < 0 && d1 > 0) || (d0 > 0 && d1 < 0)) {
+      const anteil = d0 / (d0 - d1);
+      return { alterMonate: Math.round(m0 + anteil * (m1 - m0)), gefunden: true };
+    }
+  }
+  const finalDiff = diff(horizont);
+  return {
+    gefunden: false,
+    dominanz: finalDiff > 0.005 ? 'A' : finalDiff < -0.005 ? 'B' : 'gleich',
+  };
+}

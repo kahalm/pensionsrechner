@@ -75,6 +75,40 @@
         <input type="checkbox" id="wvAn">
         <span>Mindest-Weiterversicherung in der Lücke</span>
       </label>
+
+      <label class="field toggle-field">
+        <input type="checkbox" id="vergleichAn">
+        <span>Zweites Szenario vergleichen</span>
+      </label>
+    </fieldset>
+
+    <fieldset class="grid" id="szenarioBFieldset" hidden>
+      <legend>Szenario B</legend>
+
+      <label class="field slider-field">
+        <span>Ausstiegsalter B <output id="ausstiegsalterBOut"></output></span>
+        <input type="range" id="ausstiegsalterB" min="55" max="68" step="1">
+      </label>
+
+      <label class="field slider-field">
+        <span>Pensionsantrittsalter B <output id="antrittsalterBOut"></output></span>
+        <input type="range" id="antrittsalterB" min="60" max="68" step="1">
+      </label>
+
+      <label class="field toggle-field">
+        <input type="checkbox" id="nachkaufAnB">
+        <span>Nachkauf Schul-/Studienzeiten (B)</span>
+      </label>
+
+      <label class="field slider-field" id="nachkaufJahreBField">
+        <span>Nachkauf B verteilt über <output id="nachkaufJahreBOut"></output> Jahre</span>
+        <input type="range" id="nachkaufJahreB" min="1" max="10" step="1">
+      </label>
+
+      <label class="field toggle-field">
+        <input type="checkbox" id="wvAnB">
+        <span>Mindest-Weiterversicherung in der Lücke (B)</span>
+      </label>
     </fieldset>
   </form>
 
@@ -127,6 +161,27 @@
       </table>
     </div>
     <p class="hint">Nachkaufkosten sind im Kapitalbedarf <strong>nicht</strong> enthalten – sie sollten idealerweise vor dem Ausstieg aus laufendem Einkommen finanziert werden.</p>
+  </section>
+
+  <section class="box" id="vergleichBox" hidden>
+    <h2>Vergleich Szenario A / B</h2>
+    <div class="table-scroll">
+      <table id="vergleichTable">
+        <thead>
+          <tr><th></th><th>Szenario A</th><th>Szenario B</th><th>Differenz (A−B)</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>Antritt</th><td id="vAntrittA">–</td><td id="vAntrittB">–</td><td>–</td></tr>
+          <tr><th>Kosten bei Ausstieg</th><td id="vKapitalA">–</td><td id="vKapitalB">–</td><td id="vKapitalDiff">–</td></tr>
+          <tr><th>Kosten Nachkauf (netto)</th><td id="vNachkaufA">–</td><td id="vNachkaufB">–</td><td id="vNachkaufDiff">–</td></tr>
+          <tr><th>Gesamtkosten bis Antritt</th><td id="vGesamtA">–</td><td id="vGesamtB">–</td><td id="vGesamtDiff">–</td></tr>
+          <tr><th>Pension brutto/Monat</th><td id="vBruttoA">–</td><td id="vBruttoB">–</td><td id="vBruttoDiff">–</td></tr>
+          <tr><th>Pension netto/Monat</th><td id="vNettoA">–</td><td id="vNettoB">–</td><td id="vNettoDiff">–</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="breakeven" id="breakEvenText"></p>
+    <p class="hint">Break-even: ab wann die höheren Anfangskosten (Kapitalbedarf + Nachkauf netto) eines Szenarios durch die seit seinem eigenen Antritt bezogene Nettopension gegenüber dem anderen Szenario ausgeglichen sind. Vereinfachung wie im restlichen Rechner: keine Verzinsung/Veranlagung, heutiger Geldwert.</p>
   </section>
 
   <section class="box">

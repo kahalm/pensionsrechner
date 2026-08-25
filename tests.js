@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CONST, tarif, monateZwischen, stichtagPension, ausstiegsdatum,
-  berechnePensionsszenario,
+  berechnePensionsszenario, addMonths, breakEvenPunkt,
 } from './pension.js';
 
 // Referenzperson: geb. 24.02.1983, Konto 22.812 € per 01.01.2026, 203 VM per Stichtag,
@@ -132,6 +132,59 @@ test('Nachkauf-Steuereffekt: Ersparnis liegt zwischen 0 und den vollen Kosten', 
   assert.ok(r.nachkauf.ersparnis > 0);
   assert.ok(r.nachkauf.ersparnis < r.nachkauf.kostenVoll);
   assert.ok(Math.abs(r.nachkauf.ratePerJahr - r.nachkauf.kostenVoll / 5) < 1e-9);
+});
+
+test('addMonths: addiert Kalendermonate', () => {
+  assert.deepEqual(addMonths('2000-01-01', 24), new Date(2002, 0, 1));
+});
+
+test('breakEvenPunkt: findet Schnittpunkt bei höherer Pension trotz Anfangskosten', () => {
+  const ergebnisA = {
+    ok: true,
+    monate: { ausstieg: new Date(2060, 0, 1), stichtagPension: new Date(2063, 0, 1) },
+    kapital: { kapitalPuffer: 36000 },
+    nachkauf: { kostenNetto: 0 },
+    nettoMonat: 1400,
+  };
+  const ergebnisB = {
+    ok: true,
+    monate: { ausstieg: new Date(2065, 0, 1), stichtagPension: new Date(2065, 0, 1) },
+    kapital: { kapitalPuffer: 0 },
+    nachkauf: { kostenNetto: 0 },
+    nettoMonat: 1300,
+  };
+  const be = breakEvenPunkt({ geburtsdatum: '2000-01-01', ergebnisA, ergebnisB });
+  assert.equal(be.gefunden, true);
+  assert.equal(be.alterMonate, 804); // 67 Jahre exakt
+});
+
+test('breakEvenPunkt: kein Schnittpunkt, wenn ein Szenario durchgehend dominiert', () => {
+  const ergebnisA = {
+    ok: true,
+    monate: { ausstieg: new Date(2060, 0, 1), stichtagPension: new Date(2063, 0, 1) },
+    kapital: { kapitalPuffer: 36000 },
+    nachkauf: { kostenNetto: 0 },
+    nettoMonat: 1000,
+  };
+  const ergebnisB = {
+    ok: true,
+    monate: { ausstieg: new Date(2065, 0, 1), stichtagPension: new Date(2065, 0, 1) },
+    kapital: { kapitalPuffer: 0 },
+    nachkauf: { kostenNetto: 0 },
+    nettoMonat: 1500,
+  };
+  const be = breakEvenPunkt({ geburtsdatum: '2000-01-01', ergebnisA, ergebnisB });
+  assert.equal(be.gefunden, false);
+  assert.equal(be.dominanz, 'B');
+});
+
+test('breakEvenPunkt: null, wenn ein Szenario keinen Anspruch hat', () => {
+  const be = breakEvenPunkt({
+    geburtsdatum: '2000-01-01',
+    ergebnisA: { ok: false },
+    ergebnisB: { ok: true, monate: {}, kapital: {}, nachkauf: {}, nettoMonat: 1 },
+  });
+  assert.equal(be, null);
 });
 
 test('Kapitalbedarf: Lückenjahre × (Lebenshaltung + SV-Kosten), Puffer +15 %', () => {
