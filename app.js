@@ -577,6 +577,44 @@ document.getElementById('form').addEventListener('change', (e) => {
   neuBerechnenUndRendern();
 });
 
+const INFO_TEXTE = {
+  geschlecht: `Das gesetzliche Regelpensionsalter für Frauen steigt bis 2033 stufenweise von 60 auf 65
+    (abhängig vom Geburtsdatum) – das wirkt sich auf Abschlag/Zuschlag und die Korridorpension aus.
+    Genaues Regelpensionsalter im Zweifel bei der PV erfragen.
+    <a href="https://www.pensionsversicherung.at" target="_blank" rel="noopener">Zur Pensionsversicherung →</a>`,
+  gutschrift: `Auf <strong>neuespensionskonto.at/pensionskonto</strong> mit ID Austria einloggen: Gutschrift und
+    Stichtag stehen auf der Übersicht.
+    <a href="https://www.neuespensionskonto.at/pensionskonto/" target="_blank" rel="noopener">Zum Pensionskonto →</a>`,
+  versicherungsmonate: `Auf <strong>neuespensionskonto.at/pensionskonto</strong> (ID Austria) unter „Pensionswert" ersichtlich.
+    <a href="https://www.neuespensionskonto.at/pensionskonto/" target="_blank" rel="noopener">Zum Pensionskonto →</a>`,
+  nkMax: `Gesetzliches Maximum: 108 Monate (36 Monate höhere Schule + 72 Monate/12 Semester Hochschule).
+    <br><br>
+    Ein <strong>abgebrochenes Studium ist dabei kein Ausschlussgrund</strong>: Der Nachkauf ist an
+    einzelne Semester gebunden, nicht an den Abschluss – für jedes Semester mit ausreichend nachgewiesenem
+    Studienfortschritt (Prüfungen/ECTS) kannst du es unabhängig vom späteren Abbruch nachkaufen.
+    <br><br>
+    Wie viele deiner Semester das genau betrifft, weißt du am sichersten von der PV oder siehst es teils
+    schon im Pensionskonto vorausgefüllt. Falls schon früher teilweise nachgekauft, hier die noch
+    verbleibende Anzahl eintragen.
+    <a href="https://www.pensionsversicherung.at" target="_blank" rel="noopener">Zur Pensionsversicherung →</a>`,
+  nachkaufMonate: `Wird der Antritt unter das Regelpensionsalter geschoben, hebt sich dieser Wert automatisch
+    auf das nötige Minimum für die Korridorpension (falls niedriger). Reicht selbst das Maximum nicht, kommt
+    ein Hinweis. Umgekehrt schiebt ein zu niedriger Wert das Antrittsalter nach oben.`,
+  nachkaufJahre: 'Verteilt die Nachkaufkosten steuerlich auf 1–10 Jahre (nur relevant, wenn oben Monate gewählt sind).',
+};
+
+const infoDialog = document.getElementById('infoDialog');
+document.getElementById('infoDialogClose').addEventListener('click', () => infoDialog.close());
+infoDialog.addEventListener('click', (e) => {
+  if (e.target === infoDialog) infoDialog.close();
+});
+document.querySelectorAll('.info-icon').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.getElementById('infoDialogText').innerHTML = INFO_TEXTE[btn.dataset.info] || '';
+    infoDialog.showModal();
+  });
+});
+
 document.getElementById('footerJahr').textContent = CONST.JAHR;
 
 eingabenInFormular();

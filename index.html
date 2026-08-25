@@ -24,9 +24,7 @@
 
       <label class="field">
         <span>Geschlecht
-          <span class="info-icon" tabindex="0" aria-label="Info: Warum wichtig?">i
-            <span class="info-tooltip">Das gesetzliche Regelpensionsalter für Frauen steigt bis 2033 stufenweise von 60 auf 65 (abhängig vom Geburtsdatum) – das wirkt sich auf Abschlag/Zuschlag und die Korridorpension aus. Genaues Regelpensionsalter im Zweifel bei der PV erfragen.</span>
-          </span>
+          <button type="button" class="info-icon" data-info="geschlecht" aria-label="Info: Warum wichtig?">i</button>
         </span>
         <select id="geschlecht" required>
           <option value="">– bitte wählen –</option>
@@ -37,9 +35,7 @@
 
       <label class="field">
         <span>Pensionskonto-Gutschrift (€)
-          <span class="info-icon" tabindex="0" aria-label="Info: Wo finde ich diesen Wert?">i
-            <span class="info-tooltip">Auf <strong>neuespensionskonto.at/pensionskonto</strong> mit ID Austria einloggen: Gutschrift und Stichtag stehen auf der Übersicht.</span>
-          </span>
+          <button type="button" class="info-icon" data-info="gutschrift" aria-label="Info: Wo finde ich diesen Wert?">i</button>
         </span>
         <input type="number" id="konto" min="0" step="1" required>
       </label>
@@ -51,9 +47,7 @@
 
       <label class="field">
         <span>Versicherungsmonate per Stichtag
-          <span class="info-icon" tabindex="0" aria-label="Info: Wo finde ich diesen Wert?">i
-            <span class="info-tooltip">Auf <strong>neuespensionskonto.at/pensionskonto</strong> (ID Austria) unter „Pensionswert" ersichtlich.</span>
-          </span>
+          <button type="button" class="info-icon" data-info="versicherungsmonate" aria-label="Info: Wo finde ich diesen Wert?">i</button>
         </span>
         <input type="number" id="vmStart" min="0" max="600" step="1" required>
       </label>
@@ -65,9 +59,7 @@
 
       <label class="field">
         <span>Max. Nachkauf-Monate noch verfügbar
-          <span class="info-icon" tabindex="0" aria-label="Info: Was ist das Maximum?">i
-            <span class="info-tooltip">Gesetzliches Maximum: 108 Monate (36 Monate höhere Schule + 72 Monate/12 Semester Hochschule). Falls schon früher teilweise nachgekauft, hier die noch verbleibende Anzahl eintragen – genaue Zahl bei der PV erfragen.</span>
-          </span>
+          <button type="button" class="info-icon" data-info="nkMax" aria-label="Info: Was ist das Maximum?">i</button>
         </span>
         <input type="number" id="nkMaxMonate" min="0" max="108" step="1">
       </label>
@@ -103,18 +95,14 @@
 
         <label class="field slider-field">
           <span>Nachkauf Schul-/Studienzeiten: <output id="nachkaufMonateOut"></output> Monate
-            <span class="info-icon" tabindex="0" aria-label="Info: Automatische Anpassung">i
-              <span class="info-tooltip">Wird der Antritt unter das Regelpensionsalter geschoben, hebt sich dieser Wert automatisch auf das nötige Minimum für die Korridorpension (falls niedriger). Reicht selbst das Maximum nicht, kommt ein Hinweis. Umgekehrt schiebt ein zu niedriger Wert das Antrittsalter nach oben.</span>
-            </span>
+            <button type="button" class="info-icon" data-info="nachkaufMonate" aria-label="Info: Automatische Anpassung">i</button>
           </span>
           <input type="range" id="nachkaufMonate" min="0" max="108" step="1">
         </label>
 
         <label class="field slider-field" id="nachkaufJahreField">
           <span>Nachkauf verteilt über <output id="nachkaufJahreOut"></output> Jahre
-            <span class="info-icon" tabindex="0" aria-label="Info: Steuerliche Verteilung">i
-              <span class="info-tooltip">Verteilt die Nachkaufkosten steuerlich auf 1–10 Jahre (nur relevant, wenn oben Monate gewählt sind).</span>
-            </span>
+            <button type="button" class="info-icon" data-info="nachkaufJahre" aria-label="Info: Steuerliche Verteilung">i</button>
           </span>
           <input type="range" id="nachkaufJahre" min="1" max="10" step="1">
         </label>
@@ -147,18 +135,14 @@
 
         <label class="field slider-field">
           <span>Nachkauf Schul-/Studienzeiten: <output id="nachkaufMonateBOut"></output> Monate
-            <span class="info-icon" tabindex="0" aria-label="Info: Automatische Anpassung">i
-              <span class="info-tooltip">Wird der Antritt unter das Regelpensionsalter geschoben, hebt sich dieser Wert automatisch auf das nötige Minimum für die Korridorpension (falls niedriger). Reicht selbst das Maximum nicht, kommt ein Hinweis. Umgekehrt schiebt ein zu niedriger Wert das Antrittsalter nach oben.</span>
-            </span>
+            <button type="button" class="info-icon" data-info="nachkaufMonate" aria-label="Info: Automatische Anpassung">i</button>
           </span>
           <input type="range" id="nachkaufMonateB" min="0" max="108" step="1">
         </label>
 
         <label class="field slider-field" id="nachkaufJahreBField">
           <span>Nachkauf verteilt über <output id="nachkaufJahreBOut"></output> Jahre
-            <span class="info-icon" tabindex="0" aria-label="Info: Steuerliche Verteilung">i
-              <span class="info-tooltip">Verteilt die Nachkaufkosten steuerlich auf 1–10 Jahre (nur relevant, wenn oben Monate gewählt sind).</span>
-            </span>
+            <button type="button" class="info-icon" data-info="nachkaufJahre" aria-label="Info: Steuerliche Verteilung">i</button>
           </span>
           <input type="range" id="nachkaufJahreB" min="1" max="10" step="1">
         </label>
@@ -315,6 +299,11 @@
 <footer class="page-footer">
   <p>Gedankenspiel auf Basis der Rechtslage und SV-Werte <span id="footerJahr"></span>, heutiger Geldwert, ohne Gewähr. Keine Rechts-/Steuerberatung. Verbindlich ist nur die Auskunft der Pensionsversicherung.</p>
 </footer>
+
+<dialog id="infoDialog" class="info-dialog">
+  <button type="button" class="info-dialog-close" id="infoDialogClose" aria-label="Schließen">&times;</button>
+  <div id="infoDialogText"></div>
+</dialog>
 
 <script type="module" src="app.js"></script>
 </body>

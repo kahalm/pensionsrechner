@@ -188,48 +188,59 @@ output {
 }
 
 .info-icon {
-  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 1.15rem;
+  height: 1.15rem;
   border-radius: 50%;
   background: var(--border);
   color: var(--text-muted);
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   font-style: italic;
   font-weight: 700;
   font-family: Georgia, "Times New Roman", serif;
-  cursor: help;
+  border: none;
+  cursor: pointer;
   vertical-align: middle;
+  padding: 0;
 }
 
-.info-icon:hover .info-tooltip,
-.info-icon:focus .info-tooltip {
-  display: block;
+.info-icon:hover {
+  background: var(--accent);
+  color: var(--bg-elevated);
 }
 
-.info-tooltip {
-  display: none;
-  position: absolute;
-  bottom: 135%;
-  left: 0;
-  z-index: 10;
-  width: max-content;
-  max-width: 240px;
+.info-dialog {
   background: var(--bg-elevated);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0.5rem 0.6rem;
-  font-size: 0.78rem;
-  font-weight: 400;
-  font-style: normal;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  line-height: 1.35;
+  border-radius: 10px;
+  padding: 1.1rem 1.2rem;
+  max-width: 420px;
+  width: calc(100% - 2rem);
   box-shadow: var(--shadow);
-  white-space: normal;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.info-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.info-dialog-close {
+  float: right;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0 0.5rem 0.5rem;
+}
+
+.info-dialog a {
+  color: var(--accent);
 }
 
 .toggle-field {
