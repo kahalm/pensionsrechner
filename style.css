@@ -510,11 +510,11 @@ table td {
   text-align: left;
 }
 
-.quellen summary {
-  cursor: pointer;
-  font-weight: 600;
-  color: var(--accent);
+.quellen h2 {
+  font-size: 0.95rem;
+  color: var(--text);
   text-align: center;
+  margin: 0 0 0.6rem;
 }
 
 .quellen ul {

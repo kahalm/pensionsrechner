@@ -709,7 +709,21 @@ const INFO_TEXTE = {
     auf das nötige Minimum für die Korridorpension (falls niedriger). Reicht selbst das Maximum nicht, kommt
     ein Hinweis. Senkst du diesen Wert danach wieder unter das Minimum, bleibt das Antrittsalter unverändert –
     die Statuszeile zeigt dann in Rot, wie viele Monate fehlen.`,
-  nachkaufJahre: 'Verteilt die Nachkaufkosten steuerlich auf 1–10 Jahre (nur relevant, wenn oben Monate gewählt sind).',
+  nachkaufJahre: `Verteilt die Nachkaufkosten steuerlich auf 1–10 Jahre (nur relevant, wenn oben Monate
+    gewählt sind).
+    <br><br>
+    <strong>Kosten pro Monat:</strong> gerechnet wird mit ${eurFmt.format(CONST.NK_KOSTEN_MONAT)}. Der echte
+    Beitrag hängt vom Antragsjahr und vom Kalenderjahr der Ausbildung ab – <em>nicht</em> vom Einkommen – und
+    liegt bei Antragstellung 2026 zwischen ${eurFmt2.format(CONST.NK_KOSTEN_MONAT_MIN)} und
+    ${eurFmt2.format(CONST.NK_KOSTEN_MONAT_MAX)}. Das sind nur 4,5 % Spanne; der Rechner nimmt die Mitte,
+    die Abweichung bleibt damit in beide Richtungen unter 2,3 %. Zeiten <em>vor</em> 2005 liegen am oberen
+    Ende (${eurFmt2.format(CONST.NK_KOSTEN_MONAT_MAX)}).
+    <br><br>
+    Der Höchstwert ist exakt Höchstbeitragsgrundlage × 22,8 %
+    (${eurFmt2.format(CONST.HBGL_MONAT)} × 22,8 % = ${eurFmt2.format(CONST.HBGL_MONAT * CONST.WV_SATZ)}) – ein
+    nachgekaufter Monat ist also ein fiktiver Beitragsmonat nahe der Höchstbeitragsgrundlage. Deshalb bringt er
+    viel Gutschrift, deshalb kostet er aber auch so viel: du trägst beide Beitragsanteile selbst, während bei
+    einem Dienstverhältnis der Dienstgeber 12,55 der 22,8 Prozentpunkte zahlt.`,
   wvAn: `Betrifft nur die <strong>Pensionsversicherung</strong> (§17 ASVG) – das ist freiwillig: niemand
     zwingt dich, in der Lücke weiter PV-Beiträge zu zahlen. Lässt du es weg, sparst du dir die Beiträge,
     aber die Lückenmonate zählen nicht als Versicherungsmonate und bringen keine zusätzliche Gutschrift.

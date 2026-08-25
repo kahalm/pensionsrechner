@@ -406,8 +406,8 @@
 <footer class="page-footer">
   <p>Gedankenspiel auf Basis der Rechtslage und SV-Werte <span id="footerJahr"></span>, heutiger Geldwert, ohne Gewähr. Keine Rechts-/Steuerberatung. Verbindlich ist nur die Auskunft der Pensionsversicherung.</p>
 
-  <details class="quellen">
-    <summary>Quellen &amp; Rechenannahmen</summary>
+  <section class="quellen">
+    <h2>Quellen &amp; Rechenannahmen</h2>
     <ul>
       <li><a href="https://www.neuespensionskonto.at/pensionskontorechner/" target="_blank" rel="noopener">PV – Offizieller Pensionskontorechner</a> – Referenz, an der die Netto-Berechnung kalibriert ist</li>
       <li><a href="https://www.neuespensionskonto.at/pensionskonto/" target="_blank" rel="noopener">PV – Pensionskonto (ID Austria)</a> – Quelle für Gutschrift, Stichtag und Versicherungsmonate</li>
@@ -417,10 +417,18 @@
       <li><a href="https://www.oesterreich.gv.at/de/themen/arbeit_beruf_und_pension/pension/Seite.270214" target="_blank" rel="noopener">oesterreich.gv.at – Nachkauf von Schul-, Studien- und Ausbildungszeiten</a></li>
       <li><a href="https://www.sozialversicherung.at" target="_blank" rel="noopener">Dachverband der Sozialversicherungsträger</a> – SV-Werte (Höchstbeitragsgrundlage, Geringfügigkeitsgrenze)</li>
     </ul>
-    <p class="hint">Wichtigste Vereinfachungen: heutiger Geldwert ohne Aufwertung oder Inflationsprognose (wie im
-      offiziellen PV-Rechner); Nachkaufkosten als Mittelwert statt exakt nach Ausbildungsjahr; keine Teilpension,
-      Schwerarbeits- oder Invaliditätspension. Alle Annahmen sind bei den (i)-Symbolen im Detail beschrieben.</p>
-  </details>
+    <p class="hint"><strong>Nachkaufkosten:</strong> Der tatsächliche Beitrag hängt vom Antragsjahr und vom
+      Kalenderjahr der Ausbildung ab (nicht vom Einkommen) und liegt bei Antragstellung 2026 zwischen
+      <strong>1.512,70 €</strong> und <strong>1.580,04 €</strong> pro Monat – nur 4,5 % Spanne. Der Rechner
+      verwendet die Mitte, <strong>1.546 €</strong>, wodurch die Abweichung in beide Richtungen maximal 2,2 %
+      beträgt. Der Höchstwert entspricht exakt der Höchstbeitragsgrundlage × 22,8 % (6.930 × 22,8 % = 1.580,04) –
+      ein nachgekaufter Monat ist also ein fiktiver Beitragsmonat nahe der Höchstbeitragsgrundlage. Ein
+      Risikozuschlag existiert nur für Jahrgänge vor 1955.</p>
+    <p class="hint"><strong>Weitere Vereinfachungen:</strong> heutiger Geldwert ohne Aufwertung oder
+      Inflationsprognose (wie im offiziellen PV-Rechner); keine Teilpension, Schwerarbeits- oder
+      Invaliditätspension; Frauen-Übergangsjahrgänge nach Stufenplan, Randfälle am Stichtag ungeprüft. Alle
+      weiteren Annahmen sind bei den (i)-Symbolen im Detail beschrieben.</p>
+  </section>
 </footer>
 
 <dialog id="infoDialog" class="info-dialog">

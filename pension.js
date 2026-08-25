@@ -14,7 +14,16 @@ export const CONST = {
 
   KV_SELBST_MONAT: 565.25,
 
-  NK_KOSTEN_MONAT: 1472,
+  // Verifiziert an der WKO-Kostentabelle fuer Antragsjahr 2026 (22 Jahreswerte) und an
+  // oesterreich.gv.at. Die Spanne reicht von 1.512,70 (Ausbildungsjahr 2010) bis 1.580,04
+  // (Zeiten vor 2005 sowie Ausbildungsjahr 2026) -- nur 4,5 % Unterschied. Gewaehlt ist die
+  // Mitte der Spanne, dadurch liegt der Fehler in beide Richtungen bei maximal 2,2 %.
+  // Nicht einkommensabhaengig: die Hoehe haengt am Antragsjahr und am Kalenderjahr der
+  // Ausbildung. Der Hoechstwert ist exakt HBGL_MONAT x WV_SATZ (6.930 x 22,8 % = 1.580,04),
+  // weshalb der Nachkauf als fiktiver Monat auf Hoechstbeitragsgrundlage zu lesen ist.
+  NK_KOSTEN_MONAT: 1546,
+  NK_KOSTEN_MONAT_MIN: 1512.70,
+  NK_KOSTEN_MONAT_MAX: 1580.04,
   NK_MAX_MONATE: 108,
 
   KORRIDOR_ALTER: 63,
