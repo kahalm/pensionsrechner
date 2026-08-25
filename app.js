@@ -573,9 +573,8 @@ const INFO_TEXTE = {
     <a href="https://www.neuespensionskonto.at/pensionskonto/" target="_blank" rel="noopener">Zum Pensionskonto →</a>`,
   nkMax: `Gesetzliches Maximum: 108 Monate (36 Monate höhere Schule + 72 Monate/12 Semester Hochschule).
     <br><br>
-    Ein <strong>abgebrochenes Studium ist dabei kein Ausschlussgrund</strong>: Der Nachkauf ist an
-    einzelne Semester gebunden, nicht an den Abschluss – für jedes Semester mit ausreichend nachgewiesenem
-    Studienfortschritt (Prüfungen/ECTS) kannst du es unabhängig vom späteren Abbruch nachkaufen.
+    Der Nachkauf ist an <strong>einzelne Semester</strong> gebunden, nicht an den Studienabschluss – es
+    zählt jedes Semester mit ausreichend nachgewiesenem Studienfortschritt (Prüfungen/ECTS).
     <br><br>
     Wie viele deiner Semester das genau betrifft, weißt du am sichersten von der PV oder siehst es teils
     schon im Pensionskonto vorausgefüllt. Falls schon früher teilweise nachgekauft, hier die noch
