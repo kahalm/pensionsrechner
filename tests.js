@@ -256,6 +256,8 @@ test('breakEvenPunkt: sehr späten Ausgleich ausweisen statt "kein Ausgleich"', 
   assert.equal(be.gefunden, true);
   assert.equal(be.jenseitsHorizont, true);
   assert.equal(be.dominanzPlausibel, 'A');
+  // B hat die höhere laufende Pension, ist also nach dem Schnittpunkt vorn
+  assert.equal(be.dominanzDanach, 'B');
   // ~Alter 117: A liegt bei B-Antritt um Kostendifferenz + ein Bezugsjahr vorne
   assert.ok(Math.abs(be.alterMonate / 12 - 117.1) < 0.5, `Alter=${be.alterMonate / 12}`);
 });
@@ -278,6 +280,8 @@ test('breakEvenPunkt: lebensnaher Schnittpunkt wird nicht als jenseits markiert'
   const be = breakEvenPunkt({ geburtsdatum: '1983-02-24', ergebnisA, ergebnisB });
   assert.equal(be.gefunden, true);
   assert.equal(be.jenseitsHorizont, false);
+  // Nach dem Schnittpunkt liegt das Szenario mit der höheren laufenden Pension vorn
+  assert.equal(be.dominanzDanach, 'B');
 });
 
 test('breakEvenPunkt: null, wenn ein Szenario keinen Anspruch hat', () => {

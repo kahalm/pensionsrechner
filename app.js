@@ -488,11 +488,13 @@ function rendereVergleich(ergebnisA, ergebnisB, geburtsdatum) {
       const jahre = Math.floor(be.alterMonate / 12);
       const monate = be.alterMonate % 12;
       const alterText = `Alter ${jahre} Jahre${monate ? ` ${monate} Monate` : ''} (${dateFmt.format(datum)})`;
+      const nameFuer = (d) => (d === 'A' ? 'Szenario A' : 'Szenario B');
+      const danach = nameFuer(be.dominanzDanach);
       if (be.jenseitsHorizont) {
-        const besser = be.dominanzPlausibel === 'A' ? 'Szenario A' : 'Szenario B';
-        text.textContent = `Break-even rechnerisch erst mit ${alterText} – realistisch also nie. ${besser} bleibt über die gesamte plausible Lebenserwartung vorteilhafter.`;
+        const vorher = nameFuer(be.dominanzPlausibel);
+        text.textContent = `Break-even rechnerisch erst mit ${alterText} – realistisch also nie. ${vorher} bleibt über die gesamte plausible Lebenserwartung wirtschaftlicher; erst danach wäre ${danach} wirtschaftlicher.`;
       } else {
-        text.textContent = `Break-even: mit ${alterText} gleichen sich die kumulierten Kosten/Pensionen beider Szenarien aus.`;
+        text.textContent = `Break-even: mit ${alterText} gleichen sich die kumulierten Kosten/Pensionen beider Szenarien aus. Anschließend ist ${danach} wirtschaftlicher.`;
       }
     } else if (be.dominanz === 'gleich') {
       text.textContent = 'Beide Szenarien liegen kumuliert gleichauf.';

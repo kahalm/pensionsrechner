@@ -465,6 +465,9 @@ export function breakEvenPunkt({
         jenseitsHorizont: alterMonate > horizontPlausibel,
         // Wer liegt im lebensnahen Zeitraum vorn (nur bei sehr spätem Ausgleich relevant)
         dominanzPlausibel: dominanzBei(horizontPlausibel),
+        // Wer ist nach dem Schnittpunkt wirtschaftlicher – hinter dem letzten Knick ist
+        // die Differenz linear, der Wert am Suchhorizont gilt also dauerhaft.
+        dominanzDanach: dominanzBei(horizontSuche),
       };
     }
   }
