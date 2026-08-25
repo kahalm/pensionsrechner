@@ -386,7 +386,10 @@ function rendereAmortisation(suffix, ergebnis) {
   zelle(`amKosten${suffix}`, eurFmt.format(am.kostenNetto));
   zelle(`amZusatz${suffix}`, `${eurFmt2.format(am.zusatzNettoProMonat)}/Monat`);
   zelle(`amEinfach${suffix}`, jahreText(am.jahreEinfach));
-  zelle(`amAlt${suffix}`, jahreText(am.jahreVsAlternative));
+  // null = die Rendite trägt die Entnahme dauerhaft, das Kapital wird nie aufgebraucht
+  zelle(`amAlt${suffix}`, am.jahreVsAlternative === null
+    ? 'nie (Rendite deckt die Entnahme)'
+    : jahreText(am.jahreVsAlternative));
 
   const wv = ergebnis.wvVergleich;
   zelle(`wvAmMin${suffix}`, wv.minimum ? jahreText(wv.minimum.jahreEinfach) : '–');
@@ -631,9 +634,13 @@ const INFO_TEXTE = {
     <strong>Amortisation ab Pensionsbeginn:</strong> Kosten ÷ Zusatzpension, ohne Zinsen – die optimistische
     Variante.
     <br><br>
-    <strong>… mit 2 % Alternativrendite:</strong> berücksichtigt, dass das Geld bis zum Antritt
-    auch angelegt sein könnte – die Kosten werden deshalb bis zum Antritt aufgezinst. Die 2 % sind bewusst
-    als <em>reale</em> Rendite angesetzt – also nach Steuer
+    <strong>… mit 2 % Alternativrendite:</strong> das ehrlichere Szenario. Die Nettokosten werden bis zum
+    Antritt angelegt und <em>danach monatlich um die entgangene Zusatzpension entnommen</em> – wobei sich der
+    Restbestand weiter verzinst (klassische Entnahmerechnung, nicht bloß Kapital ÷ Rate). Die Frage lautet
+    also: wie lange trägt das alternativ angelegte Geld die Pensionsdifferenz, bevor es aufgebraucht ist?
+    Übersteigt die Rendite die Entnahme, reicht das Kapital ewig – dann steht hier „nie".
+    <br><br>
+    Die 2 % sind bewusst als <em>reale</em> Rendite angesetzt – also nach Steuer
     <em>und</em> nach Inflation. Bei rund 2 % Inflation und 27,5 % KESt entspricht das grob
     <strong>5–6 % Bruttorendite p.a.</strong> am Markt (≈ 2 % real + 2 % Inflation, plus den KESt-Anteil).
     Weil auch die Pension selbst jährlich aufgewertet wird, ist der Vergleich in realen Größen der ehrlichere.

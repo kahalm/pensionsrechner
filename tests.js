@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   CONST, tarif, monateZwischen, stichtagPension, ausstiegsdatum,
   berechnePensionsszenario, addMonths, breakEvenPunkt, regelpensionsalter,
-  amortisationEinMonat, wvAmortisation,
+  amortisationEinMonat, wvAmortisation, entnahmedauerJahre,
 } from './pension.js';
 
 // Referenzperson: geb. 24.02.1983, Konto 22.812 € per 01.01.2026, 203 VM per Stichtag,
@@ -275,8 +275,11 @@ test('amortisationEinMonat: rechnet netto auf beiden Seiten', () => {
 
   // Amortisation nutzt konsequent die Netto-Größen
   assert.ok(Math.abs(r.jahreEinfach - (r.kostenNetto / r.zusatzNettoProMonat / 12)) < 1e-9);
-  // Ohne Zeit bis Antritt ist die Alternativrechnung identisch zur einfachen
-  assert.ok(Math.abs(r.jahreVsAlternative - r.jahreEinfach) < 1e-9);
+  // Ohne Zeit bis Antritt entspricht das Kapital den Nettokosten …
+  assert.ok(Math.abs(r.kapitalBeiAntritt - r.kostenNetto) < 1e-9);
+  // … die Alternativrechnung ist aber trotzdem länger, weil sich der Restbestand
+  // während der Entnahme weiter verzinst
+  assert.ok(r.jahreVsAlternative > r.jahreEinfach);
 });
 
 test('amortisationEinMonat: Abschlag senkt die Zusatzpension und verlängert die Amortisation', () => {
@@ -286,13 +289,34 @@ test('amortisationEinMonat: Abschlag senkt die Zusatzpension und verlängert die
   assert.ok(mitAbschlag.jahreEinfach > ohne.jahreEinfach, 'Abschlag verlängert die Amortisation');
 });
 
-test('amortisationEinMonat: Alternativrendite verzinst die Nettokosten bis zum Antritt', () => {
+test('amortisationEinMonat: Alternativszenario ist eine Entnahmerechnung mit Weiterverzinsung', () => {
   const r = amortisationEinMonat({ ...amArgs, jahreBisAntritt: 20 });
   assert.ok(r.jahreVsAlternative > r.jahreEinfach);
-  // Beide Dauern zählen ab Pensionsbeginn – nur die Nettokosten sind aufgezinst
-  const kostenVerzinst = r.kostenNetto * (1 + CONST.AMORTISATION_RENDITE_REAL) ** 20;
-  const erwartet = (kostenVerzinst / r.zusatzNettoProMonat) / 12;
+  // Kapital bei Antritt = Nettokosten, bis zum Antritt aufgezinst
+  const erwartetesKapital = r.kostenNetto * (1 + CONST.AMORTISATION_RENDITE_REAL) ** 20;
+  assert.ok(Math.abs(r.kapitalBeiAntritt - erwartetesKapital) < 1e-9);
+  // Danach Entnahmerechnung: identisch zu entnahmedauerJahre()
+  const erwartet = entnahmedauerJahre(
+    r.kapitalBeiAntritt, r.zusatzNettoProMonat, CONST.AMORTISATION_RENDITE_REAL,
+  );
   assert.ok(Math.abs(r.jahreVsAlternative - erwartet) < 1e-9);
+  // Weiterverzinsung während der Entnahme verlängert gegenüber bloßem Kapital ÷ Rate
+  const ohneWeiterverzinsung = r.kapitalBeiAntritt / r.zusatzNettoProMonat / 12;
+  assert.ok(r.jahreVsAlternative > ohneWeiterverzinsung);
+});
+
+test('entnahmedauerJahre: Rentenformel, Randfälle', () => {
+  // Ohne Rendite ist es die einfache Division
+  assert.ok(Math.abs(entnahmedauerJahre(1200, 10, 0) - 10) < 1e-9);
+  // Entnahme genau in Höhe der Monatszinsen -> Kapital reicht ewig
+  const i = (1 + 0.02) ** (1 / 12) - 1;
+  assert.equal(entnahmedauerJahre(10000, 10000 * i, 0.02), null);
+  // Knapp darüber -> endliche, aber sehr lange Dauer
+  assert.ok(entnahmedauerJahre(10000, 10000 * i * 1.01, 0.02) > 100);
+  // Höhere Rendite verlängert die Dauer bei gleicher Entnahme
+  assert.ok(entnahmedauerJahre(10000, 200, 0.02) > entnahmedauerJahre(10000, 200, 0));
+  // Keine Entnahme -> nie aufgebraucht
+  assert.equal(entnahmedauerJahre(10000, 0, 0.02), null);
 });
 
 test('wvAmortisation: Amortisationsdauer ist unabhängig von der Beitragsgrundlage', () => {

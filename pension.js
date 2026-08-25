@@ -261,11 +261,25 @@ function nachkaufErsparnisEinMonat(gehalt) {
   return tarif(bemessung) - tarif(Math.max(0, bemessung - CONST.NK_KOSTEN_MONAT));
 }
 
+// Wie lange trägt ein Kapital eine monatliche Entnahme, wenn der Restbestand weiter
+// verzinst wird? Klassische Rentenformel, nach der Laufzeit aufgelöst:
+//   K = P × (1 − (1+i)^−n) / i   →   n = −ln(1 − K·i/P) / ln(1+i)
+// Ergebnis in Jahren; null, wenn die Entnahme die laufenden Zinsen nicht übersteigt –
+// dann reicht das Kapital ewig und amortisiert sich nie.
+export function entnahmedauerJahre(kapital, entnahmeProMonat, jahresRendite) {
+  if (entnahmeProMonat <= 0) return null;
+  const i = (1 + jahresRendite) ** (1 / 12) - 1;
+  if (i <= 0) return kapital / entnahmeProMonat / 12;
+  const zinsProMonat = kapital * i;
+  if (entnahmeProMonat <= zinsProMonat) return null;
+  const n = -Math.log(1 - zinsProMonat / entnahmeProMonat) / Math.log(1 + i);
+  return n / 12;
+}
+
 // Faustregel-Amortisation für den Kauf von genau 1 Nachkauf-Monat (unabhängig von der
 // tatsächlich gewählten Anzahl). Durchgehend in Netto-Größen gerechnet: Kostenseite nach
 // Steuerersparnis, Pensionsseite nach KV und Lohnsteuer – nur so sind die beiden Seiten
-// überhaupt vergleichbar. Zusätzlich eine Variante, die die Nettokosten bis zum Antritt
-// mit AMORTISATION_RENDITE_REAL verzinst (Opportunitätskosten einer Alternativanlage).
+// überhaupt vergleichbar.
 export function amortisationEinMonat({
   abschlag, zuschlag, jahreBisAntritt, ok, gehalt, bruttoMonat,
 }) {
@@ -277,17 +291,21 @@ export function amortisationEinMonat({
   const zusatzBruttoProMonat = (CONST.NK_GUTSCHRIFT_MONAT / 14) * faktor;
   const zusatzNettoProMonat = zusatzNetto(bruttoMonat, zusatzBruttoProMonat);
   const jahreEinfach = kostenNetto / zusatzNettoProMonat / 12;
-  // Beide Dauern zählen ab Pensionsbeginn, damit sie vergleichbar sind: hier werden
-  // lediglich die Nettokosten bis zum Antritt aufgezinst.
+  // Alternativszenario: die Nettokosten werden bis zum Antritt angelegt und danach
+  // monatlich um die entgangene Zusatzpension entnommen – der Restbestand verzinst sich
+  // dabei weiter. Beide Dauern zählen ab Pensionsbeginn und sind damit vergleichbar.
   const jbA = Math.max(0, jahreBisAntritt);
-  const kostenBeiAntritt = kostenNetto * (1 + CONST.AMORTISATION_RENDITE_REAL) ** jbA;
-  const jahreVsAlternative = (kostenBeiAntritt / zusatzNettoProMonat) / 12;
+  const kapitalBeiAntritt = kostenNetto * (1 + CONST.AMORTISATION_RENDITE_REAL) ** jbA;
+  const jahreVsAlternative = entnahmedauerJahre(
+    kapitalBeiAntritt, zusatzNettoProMonat, CONST.AMORTISATION_RENDITE_REAL,
+  );
   return {
     kostenBrutto,
     steuerersparnis,
     kostenNetto,
     zusatzBruttoProMonat,
     zusatzNettoProMonat,
+    kapitalBeiAntritt,
     jahreEinfach,
     jahreVsAlternative,
   };
