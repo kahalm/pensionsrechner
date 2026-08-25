@@ -619,6 +619,43 @@ test('GSVG: pro Euro Beitrag entsteht mehr Gutschrift als im ASVG', () => {
   assert.ok(Math.abs(proEuroGsvg - 0.09622) < 1e-4, `${proEuroGsvg}`);
 });
 
+test('GSVG-Zuverdienst: Beitragssatz ist PV+KV, keine Arbeitslosenversicherung', () => {
+  assert.equal(svSatzDienstnehmer(400, 'gsvg'), 0, 'unter der Grenze keine Pflichtversicherung');
+  const erwartet = CONST.GSVG_PV + CONST.GSVG_KV;
+  assert.ok(Math.abs(svSatzDienstnehmer(600, 'gsvg') - erwartet) < 1e-9);
+  // Anders als im ASVG steigt der Satz nicht mit dem Einkommen (keine AlV-Staffelung)
+  assert.equal(svSatzDienstnehmer(600, 'gsvg'), svSatzDienstnehmer(5000, 'gsvg'));
+  assert.ok(svSatzDienstnehmer(600, 'gsvg') > svSatzDienstnehmer(600, 'asvg'));
+});
+
+test('GSVG-Versicherungsgrenze entspricht der Geringfügigkeitsgrenze x 12', () => {
+  assert.ok(Math.abs(CONST.GSVG_VERSICHERUNGSGRENZE_JAHR - CONST.GERINGFUEGIGKEIT * 12) < 1e-9);
+});
+
+test('GSVG-Zuverdienst: netto ohne Sonderzahlungen, mit Unfallversicherung', () => {
+  const brutto = 2000;
+  const netto = nettoErwerbseinkommenJahr(brutto, 'gsvg');
+  // 12 statt 14 Bezüge und höherer Beitragssatz -> deutlich weniger als im ASVG
+  assert.ok(netto < nettoErwerbseinkommenJahr(brutto, 'asvg'));
+  // Die Unfallversicherung ist immer abgezogen
+  const ohneUv = brutto * 12 - (CONST.GSVG_PV + CONST.GSVG_KV) * brutto * 12;
+  assert.ok(netto < ohneUv);
+});
+
+test('GSVG-Zuverdienst über der Grenze: Versicherungsmonate und Gutschrift wie im ASVG-Fall', () => {
+  const b = {
+    ...basis, gehalt: 52290, versicherungsart: 'gsvg', ausstiegsalter: 60, antrittsalter: 65,
+    nachkaufMonate: 0, wvAn: false,
+  };
+  const drunter = berechnePensionsszenario({ ...b, gfEinkommen: 400 });
+  const drueber = berechnePensionsszenario({ ...b, gfEinkommen: 600 });
+  assert.equal(drunter.kapital.vollversichert, false);
+  assert.equal(drueber.kapital.vollversichert, true);
+  assert.ok(drueber.monate.vmOhneNachkauf > drunter.monate.vmOhneNachkauf);
+  assert.ok(drueber.gutschrift > drunter.gutschrift);
+  assert.equal(drueber.kapital.svJahr, 0, 'KV-Selbstversicherung entfällt');
+});
+
 test('berechnePensionsszenario liefert amortisation + wvVergleich', () => {
   const r = berechnePensionsszenario({
     ...basis, ausstiegsalter: 65, antrittsalter: 65,

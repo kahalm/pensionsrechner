@@ -52,6 +52,12 @@ export const CONST = {
   GSVG_KV: 0.068,
   GSVG_HBGL_MONAT: 8085,          // x12 = 97.020 wie im ASVG (dort x14)
   GSVG_MIND_BG_MONAT: 551.10,     // Mindestbeitragsgrundlage, PV-Beitrag 101,95/Monat
+  // Versicherungsgrenze (Kleinunternehmerregelung): 6.613,20/Jahr -- das ist exakt die
+  // Geringfuegigkeitsgrenze x 12. Darunter kann man sich von KV und PV ausnehmen lassen
+  // und ist nur noch unfallversichert (12,95/Monat). Die Schwelle liegt damit fuer beide
+  // Systeme beim selben Monatsbetrag, nur einmal jaehrlich und einmal monatlich gedacht.
+  GSVG_VERSICHERUNGSGRENZE_JAHR: 6613.20,
+  GSVG_UV_MONAT: 12.95,
   SZ_FREIBETRAG: 620,
   SZ_STEUERSATZ: 0.06,
   // Freigrenze fuer sonstige Bezuege (Paragraf 67 EStG), Wert 2026: bleibt das
@@ -186,8 +192,13 @@ export function regelpensionsalter(geschlecht, geburtsdatum) {
 // Dienstnehmeranteil an der Sozialversicherung, abhaengig vom Monatsbrutto.
 // Bis zur Geringfuegigkeitsgrenze besteht keine Pflichtversicherung -- dann faellt gar
 // kein Dienstnehmerbeitrag an (nur der Dienstgeber zahlt Unfallversicherung).
-export function svSatzDienstnehmer(bruttoMonat) {
+export function svSatzDienstnehmer(bruttoMonat, versicherungsart = 'asvg') {
   if (bruttoMonat <= CONST.GERINGFUEGIGKEIT) return 0;
+  if (versicherungsart === 'gsvg') {
+    // Selbstaendige zahlen PV und KV zur Gaenze selbst; eine Arbeitslosenversicherung
+    // gibt es in der Pflichtversicherung nicht (nur freiwillig, hier nicht abgebildet).
+    return CONST.GSVG_PV + CONST.GSVG_KV;
+  }
   const alv = CONST.ALV_STUFEN.find((s) => bruttoMonat <= s.bis).satz;
   return CONST.GF_SV_DN_SATZ + alv;
 }
@@ -200,9 +211,16 @@ export function istVollversichert(bruttoMonat) {
 
 // Jahresnetto aus einem Dienstverhaeltnis: 14 Bezuege, davon SV und Lohnsteuer.
 // Sonderzahlungen werden wie im Pensionsteil mit dem festen Satz nach Freibetrag besteuert.
-export function nettoErwerbseinkommenJahr(bruttoMonat) {
+export function nettoErwerbseinkommenJahr(bruttoMonat, versicherungsart = 'asvg') {
   if (bruttoMonat <= 0) return 0;
-  const satz = svSatzDienstnehmer(bruttoMonat);
+  const satz = svSatzDienstnehmer(bruttoMonat, versicherungsart);
+  if (versicherungsart === 'gsvg') {
+    // Keine Sonderzahlungen: 12 statt 14 Bezuege, dafuer immer die Unfallversicherung.
+    const jahr = bruttoMonat * 12;
+    const sv = satz * Math.min(jahr, CONST.HBGL_JAHR);
+    const uv = CONST.GSVG_UV_MONAT * 12;
+    return jahr - sv - uv - tarif(Math.max(0, jahr - sv - uv));
+  }
   const lauf = bruttoMonat * 12;
   const sz = bruttoMonat * 2;
   const svLauf = satz * Math.min(lauf, CONST.HBGL_MONAT * 12);
@@ -249,9 +267,11 @@ export function gutschriftBeiAntritt({
   const jg = jahresgutschrift(gehalt, versicherungsart);
   let g = konto + (arbeitsmonate / 12) * jg;
   if (istVollversichert(gfEinkommen)) {
-    // Anstellung ueber der Geringfuegigkeitsgrenze: Gutschrift wie bei jedem
-    // Dienstverhaeltnis, inkl. Sonderzahlungen und gedeckelt bei der HBGl.
-    g += (lueckenmonate / 12) * jahresgutschrift(gfEinkommen);
+    // Ueber der Grenze besteht Pflichtversicherung. Im ASVG mit Sonderzahlungen (x14),
+    // im GSVG ohne (x12, dafuer mit Hinzurechnung der Beitraege).
+    g += (lueckenmonate / 12) * (versicherungsart === 'gsvg'
+      ? jahresgutschrift(gfEinkommen * 12, 'gsvg')
+      : jahresgutschrift(gfEinkommen, 'asvg'));
   } else if (wvAn) {
     g += (lueckenmonate / 12) * CONST.KONTOPROZENTSATZ * CONST.WV_BG_MIN * 12;
   }
@@ -341,7 +361,9 @@ export function nachkaufSteuereffekt({
   };
 }
 
-export function kapitalbedarf({ lueckenmonate, lebenshaltung, wvAn, gfEinkommen = 0 }) {
+export function kapitalbedarf({
+  lueckenmonate, lebenshaltung, wvAn, gfEinkommen = 0, versicherungsart = 'asvg',
+}) {
   // Ueber der Geringfuegigkeitsgrenze besteht Pflichtversicherung: die
   // KV-Selbstversicherung entfaellt, eine freiwillige PV-Weiterversicherung ist daneben
   // weder noetig noch vorgesehen. Darunter bleibt beides bestehen -- ein geringfuegiges
@@ -351,7 +373,7 @@ export function kapitalbedarf({ lueckenmonate, lebenshaltung, wvAn, gfEinkommen 
     ? 0
     : CONST.KV_SELBST_MONAT * 12 + (wvAn ? CONST.WV_BG_MIN * CONST.WV_SATZ * 12 : 0);
   // Das Erwerbseinkommen in der Luecke mindert den Kapitalbedarf.
-  const nettoEinkommenJahr = nettoErwerbseinkommenJahr(gfEinkommen);
+  const nettoEinkommenJahr = nettoErwerbseinkommenJahr(gfEinkommen, versicherungsart);
   const bedarfProJahr = Math.max(0, lebenshaltung * 12 + svJahr - nettoEinkommenJahr);
   const kapital = (lueckenmonate / 12) * bedarfProJahr;
   return {
@@ -524,6 +546,7 @@ export function berechnePensionsszenario(eingaben) {
     lebenshaltung: eingaben.lebenshaltung,
     wvAn: eingaben.wvAn,
     gfEinkommen: eingaben.gfEinkommen,
+    versicherungsart: eingaben.versicherungsart,
   });
   const amortisation = amortisationEinMonat({
     abschlag: anspruch.abschlag,

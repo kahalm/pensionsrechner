@@ -1,6 +1,7 @@
 import {
   CONST, berechnePensionsszenario, vergleichsdiagramm, breakEvenPunkt, addMonths,
   versicherungsmonate, regelpensionsalter, nettoErwerbseinkommenJahr, istVollversichert,
+  svSatzDienstnehmer,
 } from './pension.js';
 
 // Persönliche/eingegebene Werte starten bewusst leer (kein Beispiel-Vorausfüllen) –
@@ -267,17 +268,28 @@ function aktualisiereZuverdienst(suffix, wert, gehalt) {
   out.textContent = wert > 0 ? `${eurFmt.format(wert)}/Monat` : 'kein Zuverdienst';
 
   if (wert <= 0) {
-    skala.innerHTML = `Geringfügigkeitsgrenze bei ${eurFmt2.format(CONST.GERINGFUEGIGKEIT)} – `
-      + 'darüber gibt es Versicherungsmonate und Krankenversicherung.';
+    skala.innerHTML = eingaben.versicherungsart === 'gsvg'
+      ? `Versicherungsgrenze bei ${eurFmt.format(CONST.GSVG_VERSICHERUNGSGRENZE_JAHR)}/Jahr `
+        + `(${eurFmt2.format(CONST.GERINGFUEGIGKEIT)}/Monat) – darüber besteht Pflichtversicherung.`
+      : `Geringfügigkeitsgrenze bei ${eurFmt2.format(CONST.GERINGFUEGIGKEIT)} – `
+        + 'darüber gibt es Versicherungsmonate und Krankenversicherung.';
     return;
   }
-  const netto = nettoErwerbseinkommenJahr(wert);
+  const art = eingaben.versicherungsart;
+  const netto = nettoErwerbseinkommenJahr(wert, art);
   const nettoText = `netto ${eurFmt.format(netto / 12)}/Monat`;
+  // Die Schwelle ist in beiden Systemen derselbe Monatsbetrag, heißt aber anders:
+  // im ASVG Geringfügigkeitsgrenze, im GSVG Versicherungsgrenze (dort jährlich gedacht).
+  const grenzeText = art === 'gsvg'
+    ? `Versicherungsgrenze (${eurFmt.format(CONST.GSVG_VERSICHERUNGSGRENZE_JAHR)}/Jahr)`
+    : `Geringfügigkeitsgrenze (${eurFmt2.format(CONST.GERINGFUEGIGKEIT)})`;
   skala.innerHTML = istVollversichert(wert)
-    ? `<span class="ueber">✓ über der Geringfügigkeitsgrenze (${eurFmt2.format(CONST.GERINGFUEGIGKEIT)})</span> – `
-      + `vollversichert, ${nettoText}`
-    : `<span class="unter">✗ unter der Geringfügigkeitsgrenze (${eurFmt2.format(CONST.GERINGFUEGIGKEIT)})</span> – `
-      + `keine Versicherungsmonate, keine Krankenversicherung, ${nettoText}`;
+    ? `<span class="ueber">✓ über der ${grenzeText}</span> – pflichtversichert, ${nettoText}`
+    : `<span class="unter">✗ unter der ${grenzeText}</span> – `
+      + (art === 'gsvg'
+        ? 'Ausnahme von KV und PV möglich: keine Versicherungsmonate, nur Unfallversicherung, '
+        : 'keine Versicherungsmonate, keine Krankenversicherung, ')
+      + nettoText;
 }
 
 function leseZahlfeld(el) {
@@ -863,7 +875,7 @@ const INFO_TEXTE = {
     <br><br>
     Nicht enthalten: dass die Pension lebenslang läuft, ein angespartes Kapital aber endlich ist – der
     Nachkauf ist damit auch eine Absicherung gegen ein langes Leben.`,
-  gfEinkommen: `Monatliches Bruttoeinkommen aus einem Dienstverhältnis zwischen Ausstieg und Antritt.
+  gfEinkommen: (art) => `Monatliches Einkommen zwischen Ausstieg und Antritt.
     Der Regler reicht von 0 bis zu deinem aktuellen Gehalt; die Marke sitzt auf der
     Geringfügigkeitsgrenze (${eurFmt2.format(CONST.GERINGFUEGIGKEIT)}/Monat).
     <br><br>
@@ -875,20 +887,31 @@ const INFO_TEXTE = {
     ${CONST.KORRIDOR_MONATE} Monate der Korridorpension, die KV-Selbstversicherung entfällt, und es entsteht
     Pensionsgutschrift.
     <br><br>
-    Schon ein Euro über der Grenze genügt für den vollen Versicherungsschutz – und ist der mit Abstand
-    billigste Weg zu Versicherungsmonaten: rund ${eurFmt2.format(CONST.GF_PLUS_BG * 0.1025)}
-    Dienstnehmeranteil pro Monat statt ${eurFmt.format(CONST.NK_KOSTEN_MONAT)} beim Nachkauf.
+    Schon ein Euro über der Grenze genügt für den vollen Versicherungsschutz.` + (art === 'gsvg'
+      ? ` PV und KV sind dann allerdings zur Gänze selbst zu tragen
+        (${pz(CONST.GSVG_PV * 100, 1)} % + ${pz(CONST.GSVG_KV * 100, 1)} % der Beitragsgrundlage), einen
+        Dienstgeberanteil gibt es nicht. Unterhalb der Grenze ist auf Antrag eine Ausnahme von KV und PV
+        möglich (Kleinunternehmerregelung, zusätzlich Umsatzgrenze 55.000 € und Vorversicherungszeiten);
+        es bleibt dann nur die Unfallversicherung mit ${eurFmt2.format(CONST.GSVG_UV_MONAT)}/Monat.`
+      : ` Für Angestellte ist das der mit Abstand billigste Weg zu Versicherungsmonaten: rund
+        ${eurFmt2.format(CONST.GF_PLUS_BG * 0.1025)} Dienstnehmeranteil pro Monat statt
+        ${eurFmt.format(CONST.NK_KOSTEN_MONAT)} beim Nachkauf.`) + `
     <br><br>
     <strong>Kuriosität an der Schwelle:</strong> Knapp darunter bleibt netto mehr übrig als knapp darüber,
     weil ab der Grenze der Dienstnehmerbeitrag einsetzt. Wer die Versicherungsmonate will, nimmt diesen Knick
     bewusst in Kauf.
     <br><br>
-    Vom Brutto gehen Sozialversicherung und Lohnsteuer ab. Der Dienstnehmersatz steigt gestaffelt von
-    ${pz(CONST.GF_SV_DN_SATZ * 100, 2)} % (Arbeitslosenbeitrag 0 % bis 2.225 €) auf
-    ${pz(CONST.SV_DN_SATZ * 100, 2)} % ab 2.630 € – Einschleifregelung nach § 2a AMPFG.
+    Vom Einkommen gehen Sozialversicherung und Steuer ab.` + (art === 'gsvg'
+      ? ` Für Selbständige sind das ${pz((CONST.GSVG_PV + CONST.GSVG_KV) * 100, 1)} % (PV + KV) plus die
+        Unfallversicherung; Sonderzahlungen gibt es keine, also 12 statt 14 Bezüge.`
+      : ` Der Dienstnehmersatz steigt gestaffelt von ${pz(CONST.GF_SV_DN_SATZ * 100, 2)} %
+        (Arbeitslosenbeitrag 0 % bis 2.225 €) auf ${pz(CONST.SV_DN_SATZ * 100, 2)} % ab 2.630 € –
+        Einschleifregelung nach § 2a AMPFG.`) + `
     <br><br>
     <strong>Achtung:</strong> Am Stichtag der Korridorpension selbst darf kein Erwerbseinkommen über der
-    Geringfügigkeitsgrenze bestehen – das Dienstverhältnis muss bis dahin beendet oder reduziert sein.`,
+    Geringfügigkeitsgrenze bestehen – ` + (art === 'gsvg'
+      ? 'die Erwerbstätigkeit muss bis dahin ruhen oder unter die Grenze reduziert sein.'
+      : 'das Dienstverhältnis muss bis dahin beendet oder reduziert sein.'),
   reduktionProzent: (art) => (art === 'gsvg'
     ? `Was kostet es an <strong>monatlicher Pension</strong>, die Einkünfte zu reduzieren – etwa durch
     weniger Aufträge oder eine Auszeit? Gerechnet wird mit entsprechend geringeren Jahreseinkünften für
