@@ -601,6 +601,14 @@ const INFO_TEXTE = {
     auf das nötige Minimum für die Korridorpension (falls niedriger). Reicht selbst das Maximum nicht, kommt
     ein Hinweis. Umgekehrt schiebt ein zu niedriger Wert das Antrittsalter nach oben.`,
   nachkaufJahre: 'Verteilt die Nachkaufkosten steuerlich auf 1–10 Jahre (nur relevant, wenn oben Monate gewählt sind).',
+  wvAn: `Betrifft nur die <strong>Pensionsversicherung</strong> (§17 ASVG) – das ist freiwillig: niemand
+    zwingt dich, in der Lücke weiter PV-Beiträge zu zahlen. Lässt du es weg, sparst du dir die Beiträge,
+    aber die Lückenmonate zählen nicht als Versicherungsmonate und bringen keine zusätzliche Gutschrift.
+    <br><br>
+    Die <strong>Krankenversicherung</strong> (Selbstversicherung, ~565 €/Monat) läuft davon unabhängig
+    immer mit, da in Österreich generell Versicherungspflicht besteht – die App rechnet sie deshalb im
+    Kapitalbedarf immer mit ein, unabhängig von diesem Schalter.
+    <a href="https://www.pensionsversicherung.at" target="_blank" rel="noopener">Zur Pensionsversicherung →</a>`,
 };
 
 const infoDialog = document.getElementById('infoDialog');
