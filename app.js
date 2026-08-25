@@ -386,14 +386,13 @@ function rendereAmortisation(suffix, ergebnis) {
     return;
   }
   box.hidden = false;
-  zelle(`amKosten${suffix}`, eurFmt.format(am.kosten));
-  zelle(`amZusatz${suffix}`, `${eurFmt2.format(am.zusatzBruttoProMonat)}/Monat`);
+  zelle(`amKosten${suffix}`, eurFmt.format(am.kostenNetto));
+  zelle(`amZusatz${suffix}`, `${eurFmt2.format(am.zusatzNettoProMonat)}/Monat`);
   zelle(`amEinfach${suffix}`, jahreText(am.jahreEinfach));
   zelle(`amAlt${suffix}`, jahreText(am.jahreVsAlternative));
 
   const wv = ergebnis.wvVergleich;
   zelle(`wvAmMin${suffix}`, wv.minimum ? jahreText(wv.minimum.jahreEinfach) : '–');
-  zelle(`wvAmAkt${suffix}`, wv.aktuell ? jahreText(wv.aktuell.jahreEinfach) : '–');
 }
 
 function rendereScenario(suffix, ergebnis, lebenshaltung) {
@@ -625,8 +624,10 @@ const INFO_TEXTE = {
     verwendet (die Nettokosten, angenommen zu 5% p.a. netto verzinst statt an die PV gezahlt) – das macht den
     Vergleich fairer, wenn du die Opportunitätskosten des Nachkaufs (entgangene Anlage) mit einrechnen willst.`,
   amortisationNachkauf: `Wie lange dauert es, bis sich <strong>ein einzelner nachgekaufter Monat</strong> wieder
-    hereingespielt hat? Gerechnet mit den Bruttokosten (${eurFmt.format(CONST.NK_KOSTEN_MONAT)}) gegen die
-    zusätzliche Bruttopension, die dieser Monat dauerhaft bringt (inkl. Ab-/Zuschlag deines Antrittsalters).
+    hereingespielt hat? Durchgehend in <strong>Netto-Größen</strong> gerechnet, weil nur das vergleichbar ist:
+    auf der Kostenseite der Bruttopreis (${eurFmt.format(CONST.NK_KOSTEN_MONAT)}) abzüglich der Steuerersparnis
+    aus dem Sonderausgabenabzug, auf der Ertragsseite die zusätzliche Pension nach KV-Beitrag und Lohnsteuer
+    (inkl. Ab-/Zuschlag deines Antrittsalters).
     <br><br>
     Beide Dauern zählen <strong>ab Pensionsbeginn</strong> und sind damit direkt vergleichbar.
     <br><br>
@@ -640,21 +641,21 @@ const INFO_TEXTE = {
     <strong>5–6 % Bruttorendite p.a.</strong> am Markt (≈ 2 % real + 2 % Inflation, plus den KESt-Anteil).
     Weil auch die Pension selbst jährlich aufgewertet wird, ist der Vergleich in realen Größen der ehrlichere.
     <br><br>
-    Nicht enthalten: die Steuerersparnis beim Nachkauf (siehe Kachel oben – sie verkürzt die Amortisation
-    deutlich) und die Tatsache, dass die Pension lebenslang läuft, das Kapital aber endlich ist.`,
+    Nicht enthalten: dass die Pension lebenslang läuft, ein angespartes Kapital aber endlich ist – der
+    Nachkauf ist damit auch eine Absicherung gegen ein langes Leben.`,
   wvAmortisation: `Zahlt es sich aus, in der Lücke freiwillig weiter in die Pensionsversicherung einzuzahlen?
-    Gerechnet wird <strong>ein Jahr Beitrag</strong> gegen die zusätzliche Bruttopension, die dieses Jahr bringt.
+    Gerechnet wird <strong>ein Jahr Beitrag</strong> gegen die zusätzliche Nettopension, die dieses Jahr bringt.
     <br><br>
-    <strong>Mindestbeitrag:</strong> auf Basis der Mindestbeitragsgrundlage
-    (${eurFmt2.format(CONST.WV_BG_MIN)}/Monat → ${eurFmt.format(CONST.WV_BG_MIN * CONST.WV_SATZ)}/Monat Beitrag).
+    <strong>Die Höhe des Beitrags ist dabei egal:</strong> Beitrag (${(CONST.WV_SATZ * 100).toFixed(1)} %) und
+    Gutschrift (${(CONST.KONTOPROZENTSATZ * 100).toFixed(2)} %) sind beide linear zur Beitragsgrundlage – ob du
+    den Mindestbeitrag (Grundlage ${eurFmt2.format(CONST.WV_BG_MIN)}/Monat) oder das Maximum
+    (${eurFmt2.format(CONST.WV_BG_MAX)}/Monat) zahlst, ändert die Amortisationsdauer nicht. Ein höherer Beitrag
+    bringt proportional mehr Pension, aber nicht schneller. Nur bei einem Sprung über eine Steuerstufe kann sich
+    die Dauer minimal verschieben.
     <br><br>
-    <strong>Aktuelles Gehalt:</strong> auf Basis deines eingetragenen Bruttogehalts, gedeckelt bei der
-    Höchstbeitragsgrundlage für die Weiterversicherung (${eurFmt2.format(CONST.WV_BG_MAX)}/Monat).
-    <br><br>
-    Interessant: Das Verhältnis Beitrag ↔ Gutschrift ist bei beiden Varianten gleich (${(CONST.WV_SATZ * 100).toFixed(1)} %
-    Beitrag, ${(CONST.KONTOPROZENTSATZ * 100).toFixed(2)} % Gutschrift) – die Amortisationsdauer ist deshalb
-    identisch, nur die absoluten Beträge unterscheiden sich. Der höhere Beitrag bringt also proportional mehr
-    Pension, nicht schneller.`,
+    Anders als beim Nachkauf gibt es hier <strong>keine Steuerersparnis</strong>: die Beiträge fallen in der
+    Erwerbslücke an, wo mangels Einkommen nichts abzusetzen ist. Deshalb amortisiert sich die
+    Weiterversicherung deutlich langsamer als ein Nachkauf-Monat.`,
 };
 
 const infoDialog = document.getElementById('infoDialog');

@@ -237,45 +237,76 @@ export function kapitalbedarf({ lueckenmonate, lebenshaltung, wvAn }) {
   return { svJahr, kapital, kapitalPuffer: kapital * 1.15 };
 }
 
-function ampelFuer(anspruch, monate) {
+// "gelb" nur, wenn der Nachkauf für den Anspruch tatsächlich nötig war – also unterhalb
+// des Regelpensionsalters, wo die Korridorpension 504 Versicherungsmonate verlangt. Ab dem
+// Regelpensionsalter erhöht ein Nachkauf bloß die Pension, er entscheidet nichts.
+function ampelFuer(anspruch, monate, antrittsalter, regelalter) {
   if (!anspruch.ok) return 'rot';
-  if (monate.nkMonate > 0) return 'gelb';
-  return 'gruen';
+  const nachkaufNoetig = antrittsalter < regelalter
+    && monate.vmOhneNachkauf < CONST.KORRIDOR_MONATE;
+  return nachkaufNoetig ? 'gelb' : 'gruen';
+}
+
+// Marginale Netto-Wirkung einer zusätzlichen Bruttopension: Differenz der Nettopension
+// mit und ohne den Zuschlag. Berücksichtigt damit Progression, KV-Beitrag und
+// Sonderzahlungsbesteuerung am tatsächlichen Pensionsniveau.
+function zusatzNetto(bruttoMonat, zusatzBrutto) {
+  return nettoMonat(bruttoMonat + zusatzBrutto) - nettoMonat(bruttoMonat);
+}
+
+// Steuerersparnis, wenn genau ein Nachkauf-Monat in einem Jahr als Sonderausgabe
+// abgesetzt wird (Grenzsteuersatz beim gegebenen Gehalt).
+function nachkaufErsparnisEinMonat(gehalt) {
+  const bemessung = 12 * gehalt - 12 * Math.min(gehalt, CONST.HBGL_MONAT) * CONST.SV_DN_SATZ;
+  return tarif(bemessung) - tarif(Math.max(0, bemessung - CONST.NK_KOSTEN_MONAT));
 }
 
 // Faustregel-Amortisation für den Kauf von genau 1 Nachkauf-Monat (unabhängig von der
-// tatsächlich gewählten Anzahl): einfache Version (Kosten ÷ Zusatzpension) und eine
-// Version, die die Kosten bis zum Antritt mit AMORTISATION_RENDITE_REAL verzinst
-// (Opportunitätskosten einer Alternativanlage).
+// tatsächlich gewählten Anzahl). Durchgehend in Netto-Größen gerechnet: Kostenseite nach
+// Steuerersparnis, Pensionsseite nach KV und Lohnsteuer – nur so sind die beiden Seiten
+// überhaupt vergleichbar. Zusätzlich eine Variante, die die Nettokosten bis zum Antritt
+// mit AMORTISATION_RENDITE_REAL verzinst (Opportunitätskosten einer Alternativanlage).
 export function amortisationEinMonat({
-  abschlag, zuschlag, jahreBisAntritt, ok,
+  abschlag, zuschlag, jahreBisAntritt, ok, gehalt, bruttoMonat,
 }) {
   if (!ok) return null;
-  const kosten = CONST.NK_KOSTEN_MONAT;
+  const kostenBrutto = CONST.NK_KOSTEN_MONAT;
+  const steuerersparnis = nachkaufErsparnisEinMonat(gehalt);
+  const kostenNetto = kostenBrutto - steuerersparnis;
   const faktor = abschlag > 0 ? (1 - abschlag) : (1 + zuschlag);
   const zusatzBruttoProMonat = (CONST.NK_GUTSCHRIFT_MONAT / 14) * faktor;
-  const jahreEinfach = kosten / zusatzBruttoProMonat / 12;
+  const zusatzNettoProMonat = zusatzNetto(bruttoMonat, zusatzBruttoProMonat);
+  const jahreEinfach = kostenNetto / zusatzNettoProMonat / 12;
   // Beide Dauern zählen ab Pensionsbeginn, damit sie vergleichbar sind: hier werden
-  // lediglich die Kosten bis zum Antritt aufgezinst (entgangene Alternativanlage).
+  // lediglich die Nettokosten bis zum Antritt aufgezinst.
   const jbA = Math.max(0, jahreBisAntritt);
-  const kostenBeiAntritt = kosten * (1 + CONST.AMORTISATION_RENDITE_REAL) ** jbA;
-  const jahreVsAlternative = (kostenBeiAntritt / zusatzBruttoProMonat) / 12;
+  const kostenBeiAntritt = kostenNetto * (1 + CONST.AMORTISATION_RENDITE_REAL) ** jbA;
+  const jahreVsAlternative = (kostenBeiAntritt / zusatzNettoProMonat) / 12;
   return {
-    kosten, zusatzBruttoProMonat, jahreEinfach, jahreVsAlternative,
+    kostenBrutto,
+    steuerersparnis,
+    kostenNetto,
+    zusatzBruttoProMonat,
+    zusatzNettoProMonat,
+    jahreEinfach,
+    jahreVsAlternative,
   };
 }
 
 // Amortisation der freiwilligen PV-Weiterversicherung: lohnt sich 1 Jahr Beitrag bei
 // gegebener Beitragsgrundlage (Minimum oder aktuelles Gehalt, gedeckelt) überhaupt?
-export function wvAmortisation(basis, { abschlag, zuschlag, ok }) {
+// Ebenfalls netto gerechnet. Auf der Kostenseite ist netto = brutto: die Beiträge fallen
+// in der Erwerbslücke an, wo es mangels Einkommen nichts abzusetzen gibt.
+export function wvAmortisation(basis, { abschlag, zuschlag, ok, bruttoMonat }) {
   if (!ok) return null;
   const beitragProJahr = basis * CONST.WV_SATZ * 12;
   const gutschriftProJahr = CONST.KONTOPROZENTSATZ * basis * 12;
   const faktor = abschlag > 0 ? (1 - abschlag) : (1 + zuschlag);
   const zusatzBruttoProMonat = (gutschriftProJahr / 14) * faktor;
-  const jahreEinfach = beitragProJahr / zusatzBruttoProMonat / 12;
+  const zusatzNettoProMonat = zusatzNetto(bruttoMonat, zusatzBruttoProMonat);
+  const jahreEinfach = beitragProJahr / zusatzNettoProMonat / 12;
   return {
-    basis, beitragProJahr, zusatzBruttoProMonat, jahreEinfach,
+    basis, beitragProJahr, zusatzBruttoProMonat, zusatzNettoProMonat, jahreEinfach,
   };
 }
 
@@ -303,11 +334,22 @@ export function berechnePensionsszenario(eingaben) {
     lueckenmonate: monate.lueckenmonate, lebenshaltung: eingaben.lebenshaltung, wvAn: eingaben.wvAn,
   });
   const amortisation = amortisationEinMonat({
-    abschlag: anspruch.abschlag, zuschlag: anspruch.zuschlag, jahreBisAntritt, ok: anspruch.ok,
+    abschlag: anspruch.abschlag,
+    zuschlag: anspruch.zuschlag,
+    jahreBisAntritt,
+    ok: anspruch.ok,
+    gehalt: eingaben.gehalt,
+    bruttoMonat: anspruch.bruttoMonat,
   });
+  const wvArgs = {
+    abschlag: anspruch.abschlag,
+    zuschlag: anspruch.zuschlag,
+    ok: anspruch.ok,
+    bruttoMonat: anspruch.bruttoMonat,
+  };
   const wvVergleich = {
-    minimum: wvAmortisation(CONST.WV_BG_MIN, { abschlag: anspruch.abschlag, zuschlag: anspruch.zuschlag, ok: anspruch.ok }),
-    aktuell: wvAmortisation(Math.min(eingaben.gehalt, CONST.WV_BG_MAX), { abschlag: anspruch.abschlag, zuschlag: anspruch.zuschlag, ok: anspruch.ok }),
+    minimum: wvAmortisation(CONST.WV_BG_MIN, wvArgs),
+    aktuell: wvAmortisation(Math.min(eingaben.gehalt, CONST.WV_BG_MAX), wvArgs),
   };
 
   return {
@@ -326,7 +368,7 @@ export function berechnePensionsszenario(eingaben) {
     kapital,
     amortisation,
     wvVergleich,
-    ampel: ampelFuer(anspruch, monate),
+    ampel: ampelFuer(anspruch, monate, antrittsalter, regelalter),
   };
 }
 

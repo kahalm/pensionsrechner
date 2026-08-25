@@ -252,51 +252,96 @@ test('Kapitalbedarf: Lückenjahre × (Lebenshaltung + SV-Kosten), Puffer +15 %',
   assert.ok(Math.abs(r.kapital.kapitalPuffer - r.kapital.kapital * 1.15) < 1e-6);
 });
 
+const amArgs = {
+  ok: true, abschlag: 0, zuschlag: 0, jahreBisAntritt: 0, gehalt: 9000, bruttoMonat: 4364,
+};
+
 test('amortisationEinMonat: null ohne Anspruch', () => {
-  assert.equal(amortisationEinMonat({ ok: false, abschlag: 0, zuschlag: 0, jahreBisAntritt: 5 }), null);
+  assert.equal(amortisationEinMonat({ ...amArgs, ok: false }), null);
 });
 
-test('amortisationEinMonat: Kosten ÷ Zusatzpension, Abschlag senkt die Zusatzpension', () => {
-  const ohne = amortisationEinMonat({
-    ok: true, abschlag: 0, zuschlag: 0, jahreBisAntritt: 0,
-  });
-  assert.equal(ohne.kosten, CONST.NK_KOSTEN_MONAT);
-  // Volle Gutschrift, 14 Auszahlungen pro Jahr
-  assert.ok(Math.abs(ohne.zusatzBruttoProMonat - CONST.NK_GUTSCHRIFT_MONAT / 14) < 1e-9);
-  assert.ok(Math.abs(ohne.jahreEinfach - (ohne.kosten / ohne.zusatzBruttoProMonat / 12)) < 1e-9);
-  // Ohne Zeit bis Antritt ist die Alternativrechnung identisch zur einfachen
-  assert.ok(Math.abs(ohne.jahreVsAlternative - ohne.jahreEinfach) < 1e-9);
+test('amortisationEinMonat: rechnet netto auf beiden Seiten', () => {
+  const r = amortisationEinMonat(amArgs);
+  // Kostenseite: Bruttopreis minus Steuerersparnis
+  assert.equal(r.kostenBrutto, CONST.NK_KOSTEN_MONAT);
+  assert.ok(r.steuerersparnis > 0, 'Steuerersparnis muss greifen');
+  assert.ok(Math.abs(r.kostenNetto - (r.kostenBrutto - r.steuerersparnis)) < 1e-9);
+  assert.ok(r.kostenNetto < r.kostenBrutto);
 
-  const mitAbschlag = amortisationEinMonat({
-    ok: true, abschlag: 0.102, zuschlag: 0, jahreBisAntritt: 0,
-  });
+  // Ertragsseite: Nettopension liegt unter der Bruttopension
+  assert.ok(Math.abs(r.zusatzBruttoProMonat - CONST.NK_GUTSCHRIFT_MONAT / 14) < 1e-9);
+  assert.ok(r.zusatzNettoProMonat > 0);
+  assert.ok(r.zusatzNettoProMonat < r.zusatzBruttoProMonat);
+
+  // Amortisation nutzt konsequent die Netto-Größen
+  assert.ok(Math.abs(r.jahreEinfach - (r.kostenNetto / r.zusatzNettoProMonat / 12)) < 1e-9);
+  // Ohne Zeit bis Antritt ist die Alternativrechnung identisch zur einfachen
+  assert.ok(Math.abs(r.jahreVsAlternative - r.jahreEinfach) < 1e-9);
+});
+
+test('amortisationEinMonat: Abschlag senkt die Zusatzpension und verlängert die Amortisation', () => {
+  const ohne = amortisationEinMonat(amArgs);
+  const mitAbschlag = amortisationEinMonat({ ...amArgs, abschlag: 0.102 });
   assert.ok(mitAbschlag.zusatzBruttoProMonat < ohne.zusatzBruttoProMonat);
   assert.ok(mitAbschlag.jahreEinfach > ohne.jahreEinfach, 'Abschlag verlängert die Amortisation');
 });
 
-test('amortisationEinMonat: Alternativrendite verlängert die Amortisation', () => {
-  const r = amortisationEinMonat({
-    ok: true, abschlag: 0, zuschlag: 0, jahreBisAntritt: 20,
-  });
+test('amortisationEinMonat: Alternativrendite verzinst die Nettokosten bis zum Antritt', () => {
+  const r = amortisationEinMonat({ ...amArgs, jahreBisAntritt: 20 });
   assert.ok(r.jahreVsAlternative > r.jahreEinfach);
-  // Beide Dauern zählen ab Pensionsbeginn – nur die Kosten sind aufgezinst
-  const kostenVerzinst = CONST.NK_KOSTEN_MONAT * (1 + CONST.AMORTISATION_RENDITE_REAL) ** 20;
-  const erwartet = (kostenVerzinst / r.zusatzBruttoProMonat) / 12;
+  // Beide Dauern zählen ab Pensionsbeginn – nur die Nettokosten sind aufgezinst
+  const kostenVerzinst = r.kostenNetto * (1 + CONST.AMORTISATION_RENDITE_REAL) ** 20;
+  const erwartet = (kostenVerzinst / r.zusatzNettoProMonat) / 12;
   assert.ok(Math.abs(r.jahreVsAlternative - erwartet) < 1e-9);
 });
 
 test('wvAmortisation: Amortisationsdauer ist unabhängig von der Beitragsgrundlage', () => {
-  const min = wvAmortisation(CONST.WV_BG_MIN, { ok: true, abschlag: 0, zuschlag: 0 });
-  const max = wvAmortisation(CONST.WV_BG_MAX, { ok: true, abschlag: 0, zuschlag: 0 });
+  const wvArgs = { ok: true, abschlag: 0, zuschlag: 0, bruttoMonat: 4364 };
+  const min = wvAmortisation(CONST.WV_BG_MIN, wvArgs);
+  const max = wvAmortisation(CONST.WV_BG_MAX, wvArgs);
   // Beitragssatz und Kontoprozentsatz sind beide linear in der Grundlage
   assert.ok(Math.abs(min.jahreEinfach - max.jahreEinfach) < 1e-9);
   // Absolute Beträge skalieren aber mit der Grundlage
   assert.ok(max.beitragProJahr > min.beitragProJahr);
-  assert.ok(max.zusatzBruttoProMonat > min.zusatzBruttoProMonat);
+  assert.ok(max.zusatzNettoProMonat > min.zusatzNettoProMonat);
+});
+
+test('wvAmortisation: rechnet gegen die Nettopension, Beitrag bleibt brutto', () => {
+  const r = wvAmortisation(CONST.WV_BG_MIN, {
+    ok: true, abschlag: 0, zuschlag: 0, bruttoMonat: 4364,
+  });
+  // Keine Steuerersparnis in der Lücke: Beitrag = Grundlage × Satz × 12
+  assert.ok(Math.abs(r.beitragProJahr - CONST.WV_BG_MIN * CONST.WV_SATZ * 12) < 1e-9);
+  assert.ok(r.zusatzNettoProMonat < r.zusatzBruttoProMonat);
+  assert.ok(Math.abs(r.jahreEinfach - (r.beitragProJahr / r.zusatzNettoProMonat / 12)) < 1e-9);
 });
 
 test('wvAmortisation: null ohne Anspruch', () => {
-  assert.equal(wvAmortisation(CONST.WV_BG_MIN, { ok: false, abschlag: 0, zuschlag: 0 }), null);
+  assert.equal(wvAmortisation(CONST.WV_BG_MIN, { ok: false, abschlag: 0, zuschlag: 0, bruttoMonat: 4364 }), null);
+});
+
+test('Weiterversicherung amortisiert langsamer als Nachkauf (keine Steuerersparnis in der Lücke)', () => {
+  const r = berechnePensionsszenario({
+    ...basis, ausstiegsalter: 65, antrittsalter: 65,
+  });
+  assert.ok(
+    r.wvVergleich.minimum.jahreEinfach > r.amortisation.jahreEinfach,
+    'WV sollte langsamer amortisieren als ein Nachkauf-Monat',
+  );
+});
+
+test('Ampel: Nachkauf ab Regelpensionsalter macht nicht "gelb" (er ist dort nicht anspruchsrelevant)', () => {
+  const mitNachkauf = berechnePensionsszenario({
+    ...basis, ausstiegsalter: 65, antrittsalter: 65, nachkaufMonate: 95,
+  });
+  assert.equal(mitNachkauf.ampel, 'gruen');
+  assert.ok(mitNachkauf.monate.nkMonate > 0, 'Nachkauf soll trotzdem wirken');
+
+  // Unterhalb des Regelalters bleibt "gelb" korrekt, wenn der Nachkauf den Anspruch trägt
+  const korridor = berechnePensionsszenario({
+    ...basis, ausstiegsalter: 63, antrittsalter: 63, nachkaufMonate: 59,
+  });
+  assert.equal(korridor.ampel, 'gelb');
 });
 
 test('berechnePensionsszenario liefert amortisation + wvVergleich', () => {
