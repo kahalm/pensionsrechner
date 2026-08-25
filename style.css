@@ -274,7 +274,9 @@ output {
   color: var(--text);
 }
 
-#nachkaufJahreField.disabled {
+/* Generisch, damit auch andere Felder ausgegraut werden koennen (z.B. die
+   Weiterversicherung, wenn stattdessen eine Anstellung gewaehlt ist). */
+.field.disabled {
   opacity: 0.45;
   pointer-events: none;
 }
@@ -501,4 +503,29 @@ table td {
   color: var(--text-muted);
   font-size: 0.78rem;
   text-align: center;
+}
+
+.quellen {
+  margin-top: 1rem;
+  text-align: left;
+}
+
+.quellen summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--accent);
+  text-align: center;
+}
+
+.quellen ul {
+  margin: 0.8rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.quellen li {
+  margin-bottom: 0.4rem;
+}
+
+.quellen a {
+  color: var(--accent);
 }
