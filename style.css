@@ -578,3 +578,16 @@ table td {
 .kofi-btn:hover {
   opacity: 0.9;
 }
+
+.projekt-links {
+  margin: 0.6rem 0 0;
+}
+
+.projekt-links a {
+  color: var(--accent);
+}
+
+.projekt-links .trenner {
+  margin: 0 0.4rem;
+  color: var(--text-muted);
+}
