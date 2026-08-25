@@ -312,7 +312,8 @@ function rendereStatus(suffix, ergebnis) {
   }
   const regelalterText = numFmt.format(ergebnis.regelalter);
   if (ergebnis.ampel === 'gelb') {
-    el.textContent = `Anspruch nur durch Nachkauf von ${ergebnis.monate.nkMonate} Monaten erreicht.`;
+    const benoetigt = Math.max(0, CONST.KORRIDOR_MONATE - ergebnis.monate.vmOhneNachkauf);
+    el.textContent = `Anspruch nur durch Nachkauf von ${benoetigt} Monaten erreicht.`;
   } else if (ergebnis.eingaben.antrittsalter < ergebnis.regelalter) {
     el.textContent = `Korridorpension möglich (Regelpensionsalter ${regelalterText}). Am Stichtag darf kein Erwerbseinkommen über der Geringfügigkeitsgrenze (${eurFmt2.format(CONST.GERINGFUEGIGKEIT)}/Monat) bezogen werden.`;
   } else {
