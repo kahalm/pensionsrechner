@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   CONST, tarif, monateZwischen, stichtagPension, ausstiegsdatum,
   berechnePensionsszenario, addMonths, breakEvenPunkt, regelpensionsalter,
+  amortisationEinMonat, wvAmortisation,
 } from './pension.js';
 
 // Referenzperson: geb. 24.02.1983, Konto 22.812 € per 01.01.2026, 203 VM per Stichtag,
@@ -249,4 +250,60 @@ test('Kapitalbedarf: Lückenjahre × (Lebenshaltung + SV-Kosten), Puffer +15 %',
   });
   assert.ok(r.monate.lueckenmonate > 0);
   assert.ok(Math.abs(r.kapital.kapitalPuffer - r.kapital.kapital * 1.15) < 1e-6);
+});
+
+test('amortisationEinMonat: null ohne Anspruch', () => {
+  assert.equal(amortisationEinMonat({ ok: false, abschlag: 0, zuschlag: 0, jahreBisAntritt: 5 }), null);
+});
+
+test('amortisationEinMonat: Kosten ÷ Zusatzpension, Abschlag senkt die Zusatzpension', () => {
+  const ohne = amortisationEinMonat({
+    ok: true, abschlag: 0, zuschlag: 0, jahreBisAntritt: 0,
+  });
+  assert.equal(ohne.kosten, CONST.NK_KOSTEN_MONAT);
+  // Volle Gutschrift, 14 Auszahlungen pro Jahr
+  assert.ok(Math.abs(ohne.zusatzBruttoProMonat - CONST.NK_GUTSCHRIFT_MONAT / 14) < 1e-9);
+  assert.ok(Math.abs(ohne.jahreEinfach - (ohne.kosten / ohne.zusatzBruttoProMonat / 12)) < 1e-9);
+  // Ohne Zeit bis Antritt ist die Alternativrechnung identisch zur einfachen
+  assert.ok(Math.abs(ohne.jahreVsAlternative - ohne.jahreEinfach) < 1e-9);
+
+  const mitAbschlag = amortisationEinMonat({
+    ok: true, abschlag: 0.102, zuschlag: 0, jahreBisAntritt: 0,
+  });
+  assert.ok(mitAbschlag.zusatzBruttoProMonat < ohne.zusatzBruttoProMonat);
+  assert.ok(mitAbschlag.jahreEinfach > ohne.jahreEinfach, 'Abschlag verlängert die Amortisation');
+});
+
+test('amortisationEinMonat: Alternativrendite verlängert die Amortisation', () => {
+  const r = amortisationEinMonat({
+    ok: true, abschlag: 0, zuschlag: 0, jahreBisAntritt: 20,
+  });
+  assert.ok(r.jahreVsAlternative > r.jahreEinfach);
+  // Beide Dauern zählen ab Pensionsbeginn – nur die Kosten sind aufgezinst
+  const kostenVerzinst = CONST.NK_KOSTEN_MONAT * (1 + CONST.AMORTISATION_RENDITE_REAL) ** 20;
+  const erwartet = (kostenVerzinst / r.zusatzBruttoProMonat) / 12;
+  assert.ok(Math.abs(r.jahreVsAlternative - erwartet) < 1e-9);
+});
+
+test('wvAmortisation: Amortisationsdauer ist unabhängig von der Beitragsgrundlage', () => {
+  const min = wvAmortisation(CONST.WV_BG_MIN, { ok: true, abschlag: 0, zuschlag: 0 });
+  const max = wvAmortisation(CONST.WV_BG_MAX, { ok: true, abschlag: 0, zuschlag: 0 });
+  // Beitragssatz und Kontoprozentsatz sind beide linear in der Grundlage
+  assert.ok(Math.abs(min.jahreEinfach - max.jahreEinfach) < 1e-9);
+  // Absolute Beträge skalieren aber mit der Grundlage
+  assert.ok(max.beitragProJahr > min.beitragProJahr);
+  assert.ok(max.zusatzBruttoProMonat > min.zusatzBruttoProMonat);
+});
+
+test('wvAmortisation: null ohne Anspruch', () => {
+  assert.equal(wvAmortisation(CONST.WV_BG_MIN, { ok: false, abschlag: 0, zuschlag: 0 }), null);
+});
+
+test('berechnePensionsszenario liefert amortisation + wvVergleich', () => {
+  const r = berechnePensionsszenario({
+    ...basis, ausstiegsalter: 65, antrittsalter: 65,
+  });
+  assert.ok(r.amortisation, 'amortisation fehlt');
+  assert.ok(r.wvVergleich.minimum && r.wvVergleich.aktuell, 'wvVergleich unvollständig');
+  assert.ok(r.amortisation.jahreEinfach > 0);
 });

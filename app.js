@@ -289,6 +289,7 @@ function rendereLeerZustand() {
     diff.classList.remove('positive', 'negative');
     zelle(`cardKapital${suffix}`, '–');
     document.getElementById(`nachkaufBox${suffix}`).hidden = true;
+    document.getElementById(`amortisationBox${suffix}`).hidden = true;
     ['dVm', 'dNk', 'dGutschrift', 'dRegelalter', 'dAbschlagZuschlag', 'dSvJahr', 'dKapitalPuffer'].forEach((praefix) => {
       zelle(`${praefix}${suffix}`, '–');
     });
@@ -370,10 +371,36 @@ function rendereDetails(suffix, ergebnis) {
   zelle(`dKapitalPuffer${suffix}`, eurFmt.format(ergebnis.kapital.kapitalPuffer));
 }
 
+function jahreText(jahre) {
+  const ganze = Math.floor(jahre);
+  const monate = Math.round((jahre - ganze) * 12);
+  if (monate === 12) return `${ganze + 1} Jahre`;
+  return monate === 0 ? `${ganze} Jahre` : `${ganze} Jahre ${monate} Monate`;
+}
+
+function rendereAmortisation(suffix, ergebnis) {
+  const box = document.getElementById(`amortisationBox${suffix}`);
+  const am = ergebnis.amortisation;
+  if (!am) {
+    box.hidden = true;
+    return;
+  }
+  box.hidden = false;
+  zelle(`amKosten${suffix}`, eurFmt.format(am.kosten));
+  zelle(`amZusatz${suffix}`, `${eurFmt2.format(am.zusatzBruttoProMonat)}/Monat`);
+  zelle(`amEinfach${suffix}`, jahreText(am.jahreEinfach));
+  zelle(`amAlt${suffix}`, jahreText(am.jahreVsAlternative));
+
+  const wv = ergebnis.wvVergleich;
+  zelle(`wvAmMin${suffix}`, wv.minimum ? jahreText(wv.minimum.jahreEinfach) : '–');
+  zelle(`wvAmAkt${suffix}`, wv.aktuell ? jahreText(wv.aktuell.jahreEinfach) : '–');
+}
+
 function rendereScenario(suffix, ergebnis, lebenshaltung) {
   rendereStatus(suffix, ergebnis);
   rendereKarten(suffix, ergebnis, lebenshaltung);
   rendereNachkauf(suffix, ergebnis);
+  rendereAmortisation(suffix, ergebnis);
   rendereDetails(suffix, ergebnis);
 }
 
@@ -597,6 +624,37 @@ const INFO_TEXTE = {
     "Gesamtkosten" und den Break-even ein. Aktiviert, wird stattdessen der <strong>ETF-Wert bei Antritt</strong>
     verwendet (die Nettokosten, angenommen zu 5% p.a. netto verzinst statt an die PV gezahlt) – das macht den
     Vergleich fairer, wenn du die Opportunitätskosten des Nachkaufs (entgangene Anlage) mit einrechnen willst.`,
+  amortisationNachkauf: `Wie lange dauert es, bis sich <strong>ein einzelner nachgekaufter Monat</strong> wieder
+    hereingespielt hat? Gerechnet mit den Bruttokosten (${eurFmt.format(CONST.NK_KOSTEN_MONAT)}) gegen die
+    zusätzliche Bruttopension, die dieser Monat dauerhaft bringt (inkl. Ab-/Zuschlag deines Antrittsalters).
+    <br><br>
+    Beide Dauern zählen <strong>ab Pensionsbeginn</strong> und sind damit direkt vergleichbar.
+    <br><br>
+    <strong>Amortisation ab Pensionsbeginn:</strong> Kosten ÷ Zusatzpension, ohne Zinsen – die optimistische
+    Variante.
+    <br><br>
+    <strong>… mit 2 % Alternativrendite:</strong> berücksichtigt, dass das Geld bis zum Antritt
+    auch angelegt sein könnte – die Kosten werden deshalb bis zum Antritt aufgezinst. Die 2 % sind bewusst
+    als <em>reale</em> Rendite angesetzt – also nach Steuer
+    <em>und</em> nach Inflation. Bei rund 2 % Inflation und 27,5 % KESt entspricht das grob
+    <strong>5–6 % Bruttorendite p.a.</strong> am Markt (≈ 2 % real + 2 % Inflation, plus den KESt-Anteil).
+    Weil auch die Pension selbst jährlich aufgewertet wird, ist der Vergleich in realen Größen der ehrlichere.
+    <br><br>
+    Nicht enthalten: die Steuerersparnis beim Nachkauf (siehe Kachel oben – sie verkürzt die Amortisation
+    deutlich) und die Tatsache, dass die Pension lebenslang läuft, das Kapital aber endlich ist.`,
+  wvAmortisation: `Zahlt es sich aus, in der Lücke freiwillig weiter in die Pensionsversicherung einzuzahlen?
+    Gerechnet wird <strong>ein Jahr Beitrag</strong> gegen die zusätzliche Bruttopension, die dieses Jahr bringt.
+    <br><br>
+    <strong>Mindestbeitrag:</strong> auf Basis der Mindestbeitragsgrundlage
+    (${eurFmt2.format(CONST.WV_BG_MIN)}/Monat → ${eurFmt.format(CONST.WV_BG_MIN * CONST.WV_SATZ)}/Monat Beitrag).
+    <br><br>
+    <strong>Aktuelles Gehalt:</strong> auf Basis deines eingetragenen Bruttogehalts, gedeckelt bei der
+    Höchstbeitragsgrundlage für die Weiterversicherung (${eurFmt2.format(CONST.WV_BG_MAX)}/Monat).
+    <br><br>
+    Interessant: Das Verhältnis Beitrag ↔ Gutschrift ist bei beiden Varianten gleich (${(CONST.WV_SATZ * 100).toFixed(1)} %
+    Beitrag, ${(CONST.KONTOPROZENTSATZ * 100).toFixed(2)} % Gutschrift) – die Amortisationsdauer ist deshalb
+    identisch, nur die absoluten Beträge unterscheiden sich. Der höhere Beitrag bringt also proportional mehr
+    Pension, nicht schneller.`,
 };
 
 const infoDialog = document.getElementById('infoDialog');

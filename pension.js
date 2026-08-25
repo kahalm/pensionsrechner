@@ -255,9 +255,11 @@ export function amortisationEinMonat({
   const faktor = abschlag > 0 ? (1 - abschlag) : (1 + zuschlag);
   const zusatzBruttoProMonat = (CONST.NK_GUTSCHRIFT_MONAT / 14) * faktor;
   const jahreEinfach = kosten / zusatzBruttoProMonat / 12;
+  // Beide Dauern zählen ab Pensionsbeginn, damit sie vergleichbar sind: hier werden
+  // lediglich die Kosten bis zum Antritt aufgezinst (entgangene Alternativanlage).
   const jbA = Math.max(0, jahreBisAntritt);
   const kostenBeiAntritt = kosten * (1 + CONST.AMORTISATION_RENDITE_REAL) ** jbA;
-  const jahreVsAlternative = jbA + (kostenBeiAntritt / zusatzBruttoProMonat) / 12;
+  const jahreVsAlternative = (kostenBeiAntritt / zusatzBruttoProMonat) / 12;
   return {
     kosten, zusatzBruttoProMonat, jahreEinfach, jahreVsAlternative,
   };
