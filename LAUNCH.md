@@ -20,8 +20,13 @@ und `/methodik.html`, keine Assets; interner Traffic ist ausgenommen.
 | Requests insgesamt (inkl. Assets) | 5.546 – 5,9 je Seitenaufruf |
 
 Verlauf pro Stunde: 20:00–21:00 → 396 Aufrufe (261 Besucher), 21:00–22:00 → 378 (218),
-22:00–22:55 → 172 (122). Der Zulauf kam in zwei Wellen mit einem Tal um 21:00 und
-flachte ab 22:30 auf 10–15 Aufrufe pro 5 Minuten ab.
+22:00–23:00 → 183 (127), 23:00–23:23 → 51 (42). Der Zulauf kam in zwei Wellen mit einem
+Tal um 21:00, hielt sich ab 22:30 zäh bei 10–15 Aufrufen pro 5 Minuten und fiel um 23:20
+auf 2–4.
+
+**Endstand beim Abflachen** (23:23 MESZ, 3 Stunden 12 Minuten nach dem Post): **1.008
+Seitenaufrufe, ≈ 530 Besucher**, 6 Aufrufe der Methodik-Seite, kein Fehler auf Seiten.
+Die übrigen Zahlen in diesem Dokument sind der Stand von 22:55.
 
 ## Woher die Besucher kamen
 
