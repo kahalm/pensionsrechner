@@ -1,0 +1,6 @@
+# Pensionsrechner Österreich – https://pension.oberschmid.homes
+# Die Seite rechnet rein clientseitig; es gibt nichts, was nicht indexiert werden soll.
+User-agent: *
+Allow: /
+
+Sitemap: https://pension.oberschmid.homes/sitemap.xml
