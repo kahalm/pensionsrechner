@@ -235,6 +235,51 @@ test('breakEvenPunkt: kein Schnittpunkt, wenn ein Szenario durchgehend dominiert
   assert.equal(be.dominanz, 'B');
 });
 
+test('breakEvenPunkt: sehr späten Ausgleich ausweisen statt "kein Ausgleich"', () => {
+  // Späterer Antritt kostet mehr UND startet später – der Vorsprung aus dem zusätzlichen
+  // Bezugsjahr verschiebt den Schnittpunkt weit hinaus, er existiert aber.
+  const ergebnisA = {
+    ok: true,
+    monate: { ausstieg: new Date(2043, 1, 28), stichtagPension: new Date(2048, 2, 1) },
+    kapital: { kapitalPuffer: 177002 },
+    nachkauf: { kostenNetto: 0 },
+    nettoMonat: 2820,
+  };
+  const ergebnisB = {
+    ok: true,
+    monate: { ausstieg: new Date(2043, 1, 28), stichtagPension: new Date(2049, 2, 1) },
+    kapital: { kapitalPuffer: 212403 },
+    nachkauf: { kostenNetto: 0 },
+    nettoMonat: 2933,
+  };
+  const be = breakEvenPunkt({ geburtsdatum: '1983-02-24', ergebnisA, ergebnisB });
+  assert.equal(be.gefunden, true);
+  assert.equal(be.jenseitsHorizont, true);
+  assert.equal(be.dominanzPlausibel, 'A');
+  // ~Alter 117: A liegt bei B-Antritt um Kostendifferenz + ein Bezugsjahr vorne
+  assert.ok(Math.abs(be.alterMonate / 12 - 117.1) < 0.5, `Alter=${be.alterMonate / 12}`);
+});
+
+test('breakEvenPunkt: lebensnaher Schnittpunkt wird nicht als jenseits markiert', () => {
+  const ergebnisA = {
+    ok: true,
+    monate: { ausstieg: new Date(2043, 1, 28), stichtagPension: new Date(2048, 2, 1) },
+    kapital: { kapitalPuffer: 177002 },
+    nachkauf: { kostenNetto: 0 },
+    nettoMonat: 2820,
+  };
+  const ergebnisB = {
+    ok: true,
+    monate: { ausstieg: new Date(2043, 1, 28), stichtagPension: new Date(2049, 2, 1) },
+    kapital: { kapitalPuffer: 190000 },
+    nachkauf: { kostenNetto: 0 },
+    nettoMonat: 3200,
+  };
+  const be = breakEvenPunkt({ geburtsdatum: '1983-02-24', ergebnisA, ergebnisB });
+  assert.equal(be.gefunden, true);
+  assert.equal(be.jenseitsHorizont, false);
+});
+
 test('breakEvenPunkt: null, wenn ein Szenario keinen Anspruch hat', () => {
   const be = breakEvenPunkt({
     geburtsdatum: '2000-01-01',

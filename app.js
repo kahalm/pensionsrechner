@@ -487,12 +487,18 @@ function rendereVergleich(ergebnisA, ergebnisB, geburtsdatum) {
       const datum = addMonths(geburtsdatum, be.alterMonate);
       const jahre = Math.floor(be.alterMonate / 12);
       const monate = be.alterMonate % 12;
-      text.textContent = `Break-even: mit Alter ${jahre} Jahre${monate ? ` ${monate} Monate` : ''} (${dateFmt.format(datum)}) gleichen sich die kumulierten Kosten/Pensionen beider Szenarien aus.`;
+      const alterText = `Alter ${jahre} Jahre${monate ? ` ${monate} Monate` : ''} (${dateFmt.format(datum)})`;
+      if (be.jenseitsHorizont) {
+        const besser = be.dominanzPlausibel === 'A' ? 'Szenario A' : 'Szenario B';
+        text.textContent = `Break-even rechnerisch erst mit ${alterText} – realistisch also nie. ${besser} bleibt über die gesamte plausible Lebenserwartung vorteilhafter.`;
+      } else {
+        text.textContent = `Break-even: mit ${alterText} gleichen sich die kumulierten Kosten/Pensionen beider Szenarien aus.`;
+      }
     } else if (be.dominanz === 'gleich') {
-      text.textContent = 'Beide Szenarien liegen im Betrachtungszeitraum kumuliert gleichauf.';
+      text.textContent = 'Beide Szenarien liegen kumuliert gleichauf.';
     } else {
       const besser = be.dominanz === 'A' ? 'Szenario A' : 'Szenario B';
-      text.textContent = `Kein Ausgleich im Betrachtungszeitraum (nächste 40 Jahre nach dem späteren Antritt): ${besser} bleibt durchgehend wirtschaftlich vorteilhafter.`;
+      text.textContent = `Kein Ausgleich – ${besser} bleibt dauerhaft wirtschaftlich vorteilhafter (die laufende Pension ist dort nicht niedriger, es gibt also nichts aufzuholen).`;
     }
   }
 }

@@ -431,28 +431,45 @@ export function breakEvenPunkt({
   if (!ergebnisA.ok || !ergebnisB.ok) return null;
   const segA = szenarioSegment(ergebnisA, geburtsdatum, nachkaufKostenA);
   const segB = szenarioSegment(ergebnisB, geburtsdatum, nachkaufKostenB);
+  const spaetererAntritt = Math.max(segA.antrittM, segB.antrittM);
+  // Zwei Horizonte: bis PLAUSIBEL (40 Jahre nach dem späteren Antritt) ist ein
+  // Schnittpunkt lebensnah, darüber hinaus nur noch rechnerisch interessant. Gesucht wird
+  // bis SUCHE, damit ein sehr späterer Ausgleich ausgewiesen statt verschwiegen wird.
+  const horizontPlausibel = spaetererAntritt + 480;
+  const horizontSuche = spaetererAntritt + 1800;
   const breakpoints = [...new Set([segA.ausstiegM, segA.antrittM, segB.ausstiegM, segB.antrittM])]
     .sort((a, b) => a - b);
-  const horizont = Math.max(segA.antrittM, segB.antrittM) + 480;
-  const punkte = [...breakpoints, horizont];
+  const punkte = [...breakpoints, horizontPlausibel, horizontSuche];
   const diff = (m) => segmentWert(segA, m) - segmentWert(segB, m);
+  const dominanzBei = (m) => {
+    const d = diff(m);
+    return d > 0.005 ? 'A' : d < -0.005 ? 'B' : 'gleich';
+  };
 
   for (let i = 0; i < punkte.length - 1; i++) {
     const m0 = punkte[i];
     const m1 = punkte[i + 1];
     const d0 = diff(m0);
     const d1 = diff(m1);
+    let treffer = null;
     if (Math.abs(d0) < 0.005) {
-      return { alterMonate: Math.round(m0), gefunden: true };
+      treffer = m0;
+    } else if ((d0 < 0 && d1 > 0) || (d0 > 0 && d1 < 0)) {
+      treffer = m0 + (d0 / (d0 - d1)) * (m1 - m0);
     }
-    if ((d0 < 0 && d1 > 0) || (d0 > 0 && d1 < 0)) {
-      const anteil = d0 / (d0 - d1);
-      return { alterMonate: Math.round(m0 + anteil * (m1 - m0)), gefunden: true };
+    if (treffer !== null) {
+      const alterMonate = Math.round(treffer);
+      return {
+        gefunden: true,
+        alterMonate,
+        jenseitsHorizont: alterMonate > horizontPlausibel,
+        // Wer liegt im lebensnahen Zeitraum vorn (nur bei sehr spätem Ausgleich relevant)
+        dominanzPlausibel: dominanzBei(horizontPlausibel),
+      };
     }
   }
-  const finalDiff = diff(horizont);
   return {
     gefunden: false,
-    dominanz: finalDiff > 0.005 ? 'A' : finalDiff < -0.005 ? 'B' : 'gleich',
+    dominanz: dominanzBei(horizontSuche),
   };
 }
