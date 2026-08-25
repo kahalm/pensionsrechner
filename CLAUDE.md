@@ -35,6 +35,11 @@ korrigiert – maßgeblich ist der Code.
 | `SPEC.md` | Wörtlicher Initialprompt + Liste der späteren Ergänzungen. |
 | `VERLAUF.md` | Zusammenhängende Erzählung der Entstehung: Phasen, Entscheidungen, gefundene Fehler, Muster. |
 | `AUFWAND.md` | Token- und Kostenbilanz der Entwicklungssitzung je Modell, erzeugt mit `tools/token-report.py`. |
+| `PROMPTS.md` | Die Folge-Prompts der Entwicklung, chronologisch, ohne persönliche Angaben und Zahlen. |
+| `PRUEFUNG.md` | Prüfprotokoll: jede Konstante und Regel mit Quelle und Ergebnis (bestätigt/korrigiert/ergänzt). |
+| `LAUNCH.md` | Aggregierte Zugriffszahlen nach dem Reddit-Post und was daraus zu lernen war. |
+| `OFFEN.md` | Bekannte Lücken, als Issue-Vorlagen formuliert. |
+| `README.md`, `LICENSE` | Einstieg für GitHub; MIT. |
 | `tools/token-report.py` | Liest ein Claude-Code-Transkript (`.jsonl`) und schreibt die Bilanz als Markdown. |
 | `Dockerfile`, `nginx.conf` | nginx:alpine, statische Auslieferung, JSON-Access-Log, Cache-Politik, Charset. |
 | `docker-compose.yml` | Lokales Bauen/Testen (Port 8080) inkl. Fluent Bit. |
